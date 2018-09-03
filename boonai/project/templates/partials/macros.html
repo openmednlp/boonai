@@ -1,0 +1,62 @@
+{# create list #}
+{% macro build_list(links) %}
+<ul>
+{% for url, endpoint in links %}
+<li><a href="{{ url }}">{{ endpoint }}</a></li>
+{% endfor %}
+</ul>
+{% endmacro %}
+
+{# create dropdown #}
+{% macro build_select(options) %}
+<select>
+    {% for value, name in options %}
+        <option value="{{ value }}">{{ name }}</option>
+    {% endfor %}
+</select>
+{% endmacro %}
+
+
+{# submit any file #}
+{% from "_formhelpers.html" import render_field %}
+{% macro build_submit(form, url) %}
+<form action="{{ url }}" method="post" enctype="multipart/form-data">
+  <dl>
+    {{ render_field(form.file) }}
+    {{ form.csrf_token }}
+  </dl>
+    <button class="btn btn-sm btn-success" type="submit">Submit</button>
+</form>
+{% endmacro %}
+
+{# submit dataset #}
+{% macro build_file_submit(form, url) %}
+<form action="{{ url }}" method="post" enctype="multipart/form-data">
+  <dl>
+    {{ render_field(form.name, placeholder="Enter dataset's name") }}
+    {{ render_field(form.description, placeholder="Enter a short description") }}
+    {{ render_field(form.file) }}
+    {{ form.csrf_token }}
+  </dl>
+    <button class="btn btn-sm btn-success" type="submit">Submit</button>
+</form>
+{% endmacro %}
+
+
+{# A generic form for Flask-WTF #}
+{% macro build_form(form, url) %}
+<form action="{{ url }}" method="POST" enctype="multipart/form-data">
+    <dl>
+    {% for field in form %}
+        {% if  field.id != "csrf_token" %}
+            {{ field.label() }}
+            {{ field() }}
+            <br/><br/>
+        {% endif %}
+    {% endfor %}
+
+    {{ form.csrf_token }}
+    </dl>
+   <button type="submit">Submit</button>
+</form>
+{% endmacro %}

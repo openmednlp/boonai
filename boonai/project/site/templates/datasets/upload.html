@@ -1,0 +1,14 @@
+{% from "partials/macros.html" import build_file_submit with context %}
+{% from "partials/macros.html" import build_form with context %}
+{% from "partials/macros.html" import build_list with context %}
+
+<br/>
+<a href="{{ url_for('site_datasets.root') }}">back</a>
+<br/><br/>
+
+<img src="{{ url_for('static', filename='more_data.jpg') }}">
+
+<h1>Dataset Submit</h1>
+{{ build_form(form, url) }}
+
+
