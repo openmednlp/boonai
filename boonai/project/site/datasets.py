@@ -52,9 +52,8 @@ class Submit(FlaskForm):
 
 @mod.route('/upload', methods=['POST'])
 def upload_post():
-    api_url = current_app.config['API_URI']
-    datasets_api_url = api_url + '/api/v1/datasets'
-    storage_api_url = api_url + '/api/v1/storage'
+    datasets_api_url = current_app.config['DATASETS_API']
+    storage_api_url = current_app.config['STORAGE_API']
 
     form = Submit()
 
@@ -131,32 +130,23 @@ def dataset_get(dataset_id):
 
 @mod.route('/list', methods=['GET'])
 def list():
-    api_url = current_app.config['API_URI']
-    datasets_api_url = api_url + '/api/v1/datasets'
+    datasets_api_url = current_app.config['DATASETS_API']
 
-    start = request.args.get('start')
-    limit = request.args.get('limit')
-    if not start:
-        start = 1
-    else:
-        start = int(start)
-    if not limit:
-        limit = 5
-    else:
-        limit = int(limit)
+    r = requests.get(datasets_api_url)
 
-    r = requests.get(
-        '{}?start={}&limit={}'.format(
-            datasets_api_url, start, limit)
-    )
     data = json.loads(r.text)
+
     datasets_df = json_normalize(data['content'])
-    urls = [
-        url_for('site_datasets.dataset_get', dataset_id=dataset_id)
-        for dataset_id
-        in datasets_df['id']
-    ]
-    names = datasets_df['name']
+
+    urls = []
+    names = []
+    if data['content']:
+        urls = [
+            url_for('site_datasets.dataset_get', dataset_id=dataset_id)
+            for dataset_id
+            in datasets_df['id']
+        ]
+        names = datasets_df['name']
 
     prev_attributes = [
         l['href']

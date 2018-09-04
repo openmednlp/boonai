@@ -16,6 +16,17 @@ def row_to_dict(row):
 def get_paginated_list(results, url, start, limit):
     # check if page exists
     count = len(results)
+
+    if count == 0:
+        return {
+            'start': start,
+            'limit': limit,
+            'count': count,
+            'previous': '',
+            'next': '',
+            'results': []
+        }
+
     if count < start:
         abort(404)
 
@@ -54,7 +65,6 @@ class All(Resource):
         start = request.args.get('start')
         limit = request.args.get('limit')
 
-        datasets = Dataset.query.all()
         if not start:
             start = 1
         else:
@@ -63,6 +73,11 @@ class All(Resource):
             limit = 1000
         else:
             limit = int(limit)
+
+        datasets = Dataset.query.all()
+
+        # if len(datasets) == 0:
+
 
         dataset_pages = get_paginated_list(
             datasets,
