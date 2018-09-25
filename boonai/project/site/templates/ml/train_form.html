@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Generic Form</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+
 </head>
 <body>
 
@@ -16,8 +18,10 @@
 
 <form action="{{ url }}" method="POST" enctype="multipart/form-data">
     <dl>
-    {{ form.dataset(**{"onChange":"datasetPreview()"}) }}
-    {{ form.algorithm(**{"onChange":"algorithmPreview()"}) }}
+        {{ form.dataset }} {#(**{"onChange":"datasetPreview()"}) }}#}
+        {{ form.algorithm }} {#(**{"onChange":"algorithmPreview()"}) }}#}
+        {{ form.input }}
+        {{ form.target }}
     {{ form.csrf_token }}
     </dl>
    <button type="submit">Submit</button>
@@ -27,8 +31,32 @@
 <p id="algorithm_table"></p>
 
 
-{#
+
 <script>
+$(document).ready(function() {
+    function populateSelectFields() {
+    var dataset_id = $('#dataset').val();
+    $.getJSON(
+        '{{ url }}/dataset/' + dataset_id + '/available-fields',
+        function(data) {
+            // Remove old options
+            $('#input').find('option').remove();
+            // Add new items
+            $.each(data, function (key, val) {
+                var option_item = '<option value="' + val + '">' + val + '</option>';
+                $('#input').append(option_item);
+                $('#target').append(option_item);
+            });
+        });
+    }
+    $('#dataset').change(
+        populateSelectFields()
+    );
+});
+
+
+    {#
+
 function datasetPreview() {
     var x = document.getElementById("dataset").value;
     {{ 'var y = ' + requests('http://loaclhost:5000/api/v1/datasets/' + x) }}
@@ -40,8 +68,9 @@ function algorithmPreview() {
     var x = document.getElementById("algorithm").value;
     document.getElementById("algorithm_table").innerHTML = "You selected: " + x;
 }
-</script>
+
 #}
+</script>
 
 </body>
 </html>

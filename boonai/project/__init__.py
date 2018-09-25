@@ -2,16 +2,47 @@ from flask import Flask
 from boonai.model import db, User, Role
 import datetime
 from flask_user import UserManager
+from flask_dropzone import Dropzone
 
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_object('boonai.default_settings')
 app.config.from_pyfile('application.cfg', silent=False)
 
+# Dropzone settings TODO: move this to a proper location
+app.config['DROPZONE_UPLOAD_MULTIPLE'] = True
+app.config['DROPZONE_ALLOWED_FILE_CUSTOM'] = True
+
+allowed_file_types = '''
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document 
+    application/vnd.ms-excel 
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet  
+    application/vnd.ms-excel
+    text/csv
+    text/plain
+    text/x-csv
+    '''.split()
+
+app.config['DROPZONE_ALLOWED_FILE_TYPE'] = ','.join(allowed_file_types)
+app.config['DROPZONE_REDIRECT_VIEW'] = 'site_dataprep.converter'
+app.config['DROPZONE_MAX_FILES'] = 1000
+app.config['DROPZONE_MAX_FILE_SIZE'] = 10
+
+
+# from flask_uploads import configure_uploads, patch_request_class
+
+
 db.init_app(app)
 db.app = app
 
+dropzone = Dropzone(app)
+
+# from boonai.project.site.dataprep import dropzone_files
+# configure_uploads(app, dropzone_files)
+# patch_request_class(app)
+
 # Setup Flask-User and specify the User dataset-model
 user_manager = UserManager(app, db, User)
+
 
 # Create all database tables
 db.create_all()
@@ -57,6 +88,8 @@ app.register_blueprint(storage_blueprint, url_prefix='/api')
 from boonai.project.site.routes import mod as site_mod
 from boonai.project.site.datasets import mod as datasets_mod
 from boonai.project.site.machine_learning import mod as ml_mod
+from boonai.project.site.dataprep import mod as dataprep_mod
 app.register_blueprint(site_mod, url_prefix='/site')
 app.register_blueprint(datasets_mod, url_prefix='/site/datasets')
 app.register_blueprint(ml_mod, url_prefix='/site/ml')
+app.register_blueprint(dataprep_mod, url_prefix='/site/dataprep')

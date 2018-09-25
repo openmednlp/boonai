@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, flash
 from flask import current_app, url_for
 from flask import Response
+from flask import jsonify
 
 from flask_wtf.file import FileField, FileRequired
 
-from wtforms import SelectField, StringField
-from wtforms.validators import Length
+from wtforms import SelectField
 
 from flask_wtf import FlaskForm
 from werkzeug.utils import secure_filename
@@ -16,6 +16,8 @@ from pandas import DataFrame
 from pandas.io.json import json_normalize
 
 import json
+from boonai.project.site.helper import url_join, url_csv_to_df
+
 mod = Blueprint('site_machine_learning', __name__, template_folder='templates')
 
 
@@ -28,8 +30,7 @@ def _get_link(links, rel_value):
 
 @mod.route('/models', methods=['GET'])
 def models_get():
-    api_url = current_app.config['API_URI']
-    models_api_url = api_url + '/api/v1/machine-learning/models'
+    models_api_url = current_app.config['MODELS_API']
     r = requests.get(models_api_url)
 
     data = json.loads(r.text)
@@ -60,8 +61,7 @@ def models_post():
 
 @mod.route('/models/<int:model_id>')
 def model(model_id):
-    api_url = current_app.config['API_URI']
-    url = api_url + '/api/v1/machine-learning/models/' + str(model_id)
+    url = url_join(current_app.config['MODELS_API'], str(model_id))
     r = requests.get(url)
 
     json_data = json.loads(r.content)
@@ -94,6 +94,8 @@ class TrainForm(FlaskForm):
     # )
     dataset = SelectField(label='Dataset', coerce=str)
     algorithm = SelectField(label='Algorithm', coerce=str)
+    input = SelectField(label='Input field', coerce=str)
+    target = SelectField(label='Target field', coerce=str)
 
 
 @mod.route('/', methods=['GET'])
@@ -111,10 +113,8 @@ def root():
 
 @mod.route('/train', methods=['GET', 'POST'])
 def train():
-    api_url = current_app.config['API_URI']
-    # storage_api_url = api_url + '/api/v1/storage'
+    dataset_url = current_app.config['DATASETS_API']
 
-    dataset_url = api_url + '/api/v1/datasets'
     r = requests.get(dataset_url)
     datasets = json.loads(r.content)['content']
 
@@ -126,9 +126,9 @@ def train():
                 c['name']
             )
         )
+    algorithms_url = current_app.config['ALGORITHMS_API']
 
-    url = api_url + '/api/v1/machine-learning/algorithms'
-    r = requests.get(url)
+    r = requests.get(algorithms_url)
     algorithms = json.loads(r.content)['content']
     algorithm_options = []
     for a in algorithms:
@@ -139,13 +139,14 @@ def train():
     form = TrainForm()
     form.algorithm.choices = algorithm_options
     form.dataset.choices = dataset_options
+    form.input.choices = []
+    form.target.choices = []
 
     if form.validate_on_submit():
         dataset_id = form.dataset.data
         algorithm_id = form.algorithm.data
 
-        model_api_url = api_url + "/api/v1/machine-learning/models"
-
+        model_api_url = current_app.config['MODELS_API']
         json_request = {
             "dataset_id": dataset_id,
             "algorithm_id": algorithm_id
@@ -155,6 +156,8 @@ def train():
             model_api_url,
             json=json_request
         )
+
+        print(r)
 
         return redirect(url_for('site_machine_learning.train'))
 
@@ -170,6 +173,25 @@ def train_dataset(dataset_id):
     return json.dumps(
         {'id': dataset_id}
     )
+
+
+@mod.route('/train/dataset/<int:dataset_id>/available-fields', methods=['GET'])
+def get_available_fields(dataset_id):
+    dataset_api_url = current_app.config['DATASETS_API']
+    dataset_url = url_join(dataset_api_url, str(dataset_id))
+    r = requests.get(dataset_url)
+    content = json.loads(r.content)
+    links = content['links']
+
+    file_url = None
+    for l in links:
+        if l['rel'] == 'file':
+            file_url = l['href']
+            break
+
+    df = url_csv_to_df(file_url)
+
+    return jsonify({c: c for c in df.columns})
 
 
 class PredictForm(FlaskForm):
@@ -226,8 +248,10 @@ def predict():
         return Response(
             csv,
             mimetype="text/csv",
-            headers={"Content-disposition":
-                         "attachment; filename=file.csv"})
+            headers={
+                "Content-disposition": "attachment; filename=file.csv"
+            }
+        )
 
     return render_template(
         'ml/predict_form.html',

@@ -15,6 +15,7 @@
     <p><a href={{ url_for('site.admin') }}>{%trans%}Admin Page{%endtrans%}</a> (role_required: admin@example.com / Password1')</p>
     <p><a href={{ url_for('site_datasets.root') }}>{%trans%}Datasets Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
     <p><a href={{ url_for('site_machine_learning.root') }}>{%trans%}Train & Run Models Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
+    <p><a href={{ url_for('site_dataprep.root') }}>{%trans%}DataPrep{%endtrans%}</a></p>
     <p><a href={{ url_for('site.labeling') }}>{%trans%}Labeling, Sampling through Active Learning and Stuff Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
     <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
 {% endblock %}

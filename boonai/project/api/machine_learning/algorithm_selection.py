@@ -118,6 +118,60 @@ def train_cnn_w2v(X, y):
     keras_model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5, batch_size=32, verbose=2)
 
 
+def train_lstm(X, y):
+    # Keras
+    from keras.preprocessing.text import Tokenizer
+    from keras.preprocessing.sequence import pad_sequences
+    from keras.models import Sequential
+    from keras.layers import Dense, Flatten, LSTM, Conv1D, MaxPooling1D, Dropout, Activation, Input
+    from keras.layers.embeddings import Embedding
+    from keras.models import Model
+    from keras.wrappers.scikit_learn import KerasClassifier
+    from keras.optimizers import RMSprop
+
+    from sklearn.base import BaseEstimator, TransformerMixin
+
+    class Preparation(BaseEstimator, TransformerMixin):
+        def fit(self, X, y):
+            ### Create sequence
+            vocabulary_size = 1000
+            self.tokenizer = Tokenizer(num_words=vocabulary_size)
+            self.tokenizer.fit_on_texts(X)
+            return self
+
+        def transform(self, X):
+            sequences = self.tokenizer.texts_to_sequences(X)
+            input_length = max(len(s) for s in sequences) + 20
+            return pad_sequences(sequences, maxlen=input_length)
+
+    def get_rnn_model():
+        max_length = 100
+        vocab_size = 5000
+        inputs = Input(name='inputs', shape=[max_length])
+        layer = Embedding(vocab_size, 32, input_length=max_length)(inputs)
+        layer = LSTM(128)(layer)
+        layer = Dense(256, name='FC1')(layer)
+        layer = Activation('relu')(layer)
+        layer = Dropout(0.01)(layer)
+        layer = Dense(1, name='out_layer')(layer)
+        layer = Activation('sigmoid')(layer)
+        model = Model(inputs=inputs, outputs=layer)
+        print(model.summary())
+        model.compile(
+            loss='binary_crossentropy', optimizer=RMSprop(), metrics=['accuracy']
+        )
+        return model
+
+    kc = KerasClassifier(build_fn=get_rnn_model, epochs=5, verbose=2)
+    pipeline = make_pipeline(
+        Preparation(),
+        kc
+    )
+
+    pipeline.fit(X, y)
+    return pipeline
+
+
 def get_algorithms():
     return [
         create_algorithm_dict(
@@ -157,9 +211,9 @@ def get_algorithms():
             'Let\'s check what needs to ne added here'),
         create_algorithm_dict(
             5,
-            train_cnn_w2v,
-            'CNN Word2Vec',
-            'Super magical CNN Word2Vec',
+            train_lstm,
+            'LSTM',
+            'Super magical LSTM',
             'admin',
             'Let\'s check what needs to ne added here'),
     ]

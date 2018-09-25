@@ -48,7 +48,6 @@ class All(Resource):
 
     def post(self):
         # Add new file
-
         posted_data = request.get_data()
 
         file = File(
@@ -60,9 +59,7 @@ class All(Resource):
 
         return file.id, 201
 
-
-    # TODO: batch update missing?
-
+    #  TODO: batch update missing?
     def delete(self):
         # it's gonna delete everything
         # Dangerous, maybe jsut for super duper admin user
@@ -77,12 +74,12 @@ class Single(Resource):
         if files is None:
             return abort(404)
 
-        dict = row_to_dict(files)
+        file_dict = row_to_dict(files)
 
         from flask import send_file
         import io
         return send_file(
-            io.BytesIO(dict['content']),
+            io.BytesIO(file_dict['content']),
             mimetype='application/octet-stream',
             as_attachment=True,
             attachment_filename='%s.data' % file_id)

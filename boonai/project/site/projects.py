@@ -165,7 +165,7 @@ def list():
 
     return render_template(
         'datasets/list.html',
-        url=url_for('site_datasets.list'),
+        url=url_for('site_datasets.dataset_list'),
         links=zip(urls, names),
         prev_url=prev_url if prev_url else None,
         next_url=next_url if next_url else None

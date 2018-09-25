@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DataPrep</title>
+</head>
+
+<body>
+<h1>Select Fileds Page!</h1>
+</br>
+<a href="{{ url_for('site_dataprep.root') }}">Back</a><p>
+
+    <form action="{{ url }}" method="POST" enctype="multipart/form-data">
+    <dl>
+        {{ form.selected.label() }}
+        </br>
+        {{ form.selected() }}
+        </br></br>
+
+        {{ form.csrf_token }}
+    </dl>
+   <button type="submit">Submit</button>
+</form>
+
+
+</body>
+</html>
+
+

@@ -1,0 +1,70 @@
+{% from "partials/macros.html" import build_file_submit with context %}
+{% from "partials/macros.html" import build_form with context %}
+{% from "partials/macros.html" import build_list with context %}
+
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Filter</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='pagination.css') }}">
+
+</head>
+<body>
+<br/>
+<a href="{{ url_for('site_dataprep.field_selection_get') }}">back</a>
+<br/><br/>
+
+
+<h1>Filter Data</h1>
+<form action="{{ url }}" method="POST" enctype="multipart/form-data">
+    <dl>
+        {{ form.field.label() }}
+        {{ form.field() }}
+        <br/><br/>
+        {{ form.headers.label() }}
+        {{ form.headers() }}
+        <br/><br/>
+        {{ form.keywords.label() }}
+        {{ form.keywords() }}
+        <br/><br/>
+        {{ form.csrf_token }}
+    </dl>
+    {{ form.test_button}}
+    {{ form.submit_button}}
+
+</form>
+
+{{ pagination.info }}
+{{ pagination.links }}
+ <div class="table-responsive">
+    <table class="table table-hover">
+    <thead>
+        <tr>
+            <th> # </th>
+            {% for field in fields %}
+            <th>{{ field }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+        <tr>
+            <td>{{ loop.index + (pagination.page - 1) * pagination.per_page }}</td>
+            {% for cell in row %}
+            <td class="reportText">{{ cell }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+</tbody>
+</table>
+ </div>
+{{ pagination.links }}
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"></script>
+
+</body>
+</html>

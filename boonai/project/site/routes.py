@@ -36,5 +36,6 @@ def admin():
 
 
 @mod.route('/labeling', methods=['GET', 'POST'])
+@login_required
 def labeling():
     return "<h1>Fake page</h1>"

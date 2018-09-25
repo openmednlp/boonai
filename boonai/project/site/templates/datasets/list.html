@@ -10,19 +10,4 @@
 
 <h1>Dataset List</h1>
 
-{% if prev_url is not none %}
-<a href="{{ prev_url }}">prev</a>
-{% else %}
-prev
-{% endif %}
-
-{% if next_url is not none %}
-<a href="{{ next_url }}">next</a>
-{% else %}
-next
-{% endif %}
-
-
 {{ build_list(links)}}
-
-

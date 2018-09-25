@@ -1,8 +1,9 @@
 from flask import Blueprint, jsonify, request, url_for, abort
 from flask_restful import Resource, Api
-from flask_user import current_user
 from boonai.model import Dataset
 from boonai.project import db
+from flask import current_app
+from boonai.project.site.helper import url_join
 
 
 def row_to_dict(row):
@@ -24,7 +25,7 @@ def get_paginated_list(results, url, start, limit):
             'count': count,
             'previous': '',
             'next': '',
-            'results': []
+            'field_selection': []
         }
 
     if count < start:
@@ -54,72 +55,49 @@ def get_paginated_list(results, url, start, limit):
         obj['next'] = url + '?start={}&limit={}'.format(start_copy, limit)
 
     # finally extract result according to bounds
-    obj['results'] = results[(start - 1):(start - 1 + limit)]
+    obj['field_selection'] = results[(start - 1):(start - 1 + limit)]
     return obj
 
 
 class All(Resource):
     def get(self):
-        # Get list of all get
+        storage_api_url = current_app.config['STORAGE_API']
 
-        start = request.args.get('start')
-        limit = request.args.get('limit')
+        user_id = request.args.get('userid')
+        project_id = request.args.get('projectid')
+        query = Dataset.query
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+        datasets = query.all()  # TODO: add admin and None if not logged in - security risk!
 
-        if not start:
-            start = 1
-        else:
-            start = int(start)
-        if not limit:
-            limit = 1000
-        else:
-            limit = int(limit)
-
-        datasets = Dataset.query.all()
-
-        # if len(datasets) == 0:
-
-
-        dataset_pages = get_paginated_list(
-            datasets,
-            url_for('datasets.all'),
-            start,
-            limit
-        )
-
-
-        datasets_dict = [
-            row_to_dict(row)
-            for row in dataset_pages['results']
-         ]
-
-        for dataset_dict in datasets_dict:
-            dataset_dict['links'] = [
+        content = [{
+            'id': d.id,
+            'file_id': d.file_id,
+            'project_id': d.project_id,
+            'name': d.name,
+            'description': d.description,
+            'user_id': d.user_id,
+            'links': [
                 {
                     "rel": "self",
-                    "href": url_for('datasets.single', dataset_id=dataset_dict['id'])
-                 },
-                {
+                    "href": url_for('datasets.single', dataset_id=d.id)
+                }, {
                     "rel": "file",
-                    "href": url_for('storage.single', file_id=dataset_dict['file_id'])
-                }
-            ]
+                    "href": url_join(storage_api_url, d.file_id)
+                }]
+        } for d in datasets]
 
         return {
-            'content': datasets_dict,
+            'content': content,
             'links': [
                 {
                     "rel": "self",
                     "href": request.full_path
-                },
-                {
-                    "rel": "previous",
-                    "href": dataset_pages['previous']
-                },
-                {
-                    "rel": "next",
-                    "href": dataset_pages['next']
                 }
             ]
+
         }
 
     def post(self):
@@ -129,8 +107,8 @@ class All(Resource):
         dataset = Dataset(
             name=posted_json['name'],
             description=posted_json['description'],
-            user_id=current_user.get_id(),
-            project_id=current_user.get_id(),
+            user_id=posted_json['user_id'],
+            project_id=posted_json['project_id'],
             file_id=posted_json['file_id']
         )
 
@@ -139,9 +117,7 @@ class All(Resource):
 
         return {'you sent': dataset.id}, 201
 
-
-    # TODO: batch update missing?
-
+    #  TODO: batch update missing?
     def delete(self):
         # it's gonna delete everything
         # Dangerous, maybe jsut for super duper admin user
@@ -150,12 +126,13 @@ class All(Resource):
 
 class Single(Resource):
     def get(self, dataset_id):
+        storage_api_url = current_app.config['STORAGE_API']
         # get sepcific model
         dataset = Dataset.query.filter_by(id=dataset_id).first()
-        dict = row_to_dict(dataset)
+        content = row_to_dict(dataset)
         return jsonify(
             {
-                'content': dict,
+                'content': content,
                 'links': [
                     {
                         "rel": "self",
@@ -163,7 +140,12 @@ class Single(Resource):
                     },
                     {
                         "rel": "file",
-                        "href": url_for('storage.single', file_id=dict['file_id'])
+                        "href": '/'.join(
+                            [
+                                storage_api_url.strip('/'),
+                                str(content['file_id'])
+                            ]
+                        )
                     }
                 ]
 
