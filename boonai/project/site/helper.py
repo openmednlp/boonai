@@ -30,7 +30,7 @@ def upload_dataset(file, name, description, user_id, project_id):
 
 
 def extract_section(header_patterns, string, strip=True):
-    pattern = r'({})[ \t]*\n+((.+\n)+?)\n{{1}}'.format('|'.join(header_patterns))
+    pattern = r'({})[ \t]*:?[ \t]*\n+((.+\n)+?)(\n|\Z){{1}}'.format('|'.join(header_patterns))
     findings = re.findall(
         pattern=pattern,
         string=string,
