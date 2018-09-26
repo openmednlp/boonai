@@ -22,7 +22,7 @@ from tempfile import mkdtemp
 import magic
 
 import pandas as pd
-
+from os.path import splitext
 
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
@@ -91,8 +91,6 @@ def index():
     return render_template('dataprep/index.html', links=zip(urls, names))
 
 
-
-
 @mod.route('/dropzone', methods=['GET', 'POST'])
 @login_required
 def dropzone():
@@ -107,6 +105,10 @@ def dropzone():
 
         if not session['content_type']:
             session['content_type'] = types[0]
+
+        if not session['extension']:
+            filename = next(iter(file_items.values())).filename
+            session['extension'] = splitext(filename)[1]
 
         is_homogeneous = len(set(types)) == 1
         if is_homogeneous:
@@ -124,6 +126,7 @@ def dropzone():
 
     session['tmp_dir'] = mkdtemp()
     session['content_type'] = None
+    session['extension'] = None
     return render_template('dataprep/dropzone.html')
 
 
@@ -164,23 +167,34 @@ def converter():
     session['processed'] = False
     session['outputs'] = mkdtemp()
 
-    if session['content_type'].startswith('text/csv'):
+    is_csv = (
+            session['extension'] == '.csv' or
+            session['content_type'].startswith('text/csv')
+    )
+    is_excel = session['extension'] in ['.xls', '.xlsx'] or any(
+            s
+            in session['content_type']
+            for s in ['spreadsheet', 'xls', 'xlsx', 'excel']
+    )
+    is_text = (
+            session['extension'] == '.txt' or
+            session['content_type'].startswith('text/')
+    )
+
+    if is_csv:
         # TODO: can be optimized
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
         df = pd.read_csv(file_path)
         session['fields'] = df.columns.tolist()
 
-    elif any(
-            s
-            in session['content_type']
-            for s in ['spreadsheet', 'xls', 'xlsx', 'excel']):
+    elif is_excel:
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
         df = pd.read_excel(file_path)
         session['fields'] = df.columns.tolist()
 
-    elif session['content_type'].startswith('text/'):
+    elif is_text:
         session['fields'] = ['id', 'text']
         dataset_json = texts_to_json(session['tmp_dir'])
         df = DataFrame(dataset_json)
