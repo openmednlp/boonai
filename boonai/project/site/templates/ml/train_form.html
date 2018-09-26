@@ -17,13 +17,21 @@
 
 
 <form action="{{ url }}" method="POST" enctype="multipart/form-data">
-    <dl>
-        {{ form.dataset }} {#(**{"onChange":"datasetPreview()"}) }}#}
-        {{ form.algorithm }} {#(**{"onChange":"algorithmPreview()"}) }}#}
-        {{ form.input }}
-        {{ form.target }}
+    <table>
+        <tr>
+            <th>Dataset</th>
+            <th>Algorithm</th>
+            <th>Input field</th>
+            <th>Target field</th>
+        </tr>
+        <tr>
+            <td>{{ form.dataset (**{"onChange":"populateSelectFields()"}) }}</td>
+            <td>{{ form.algorithm }} {#(**{"onChange":"algorithmPreview()"}) }}#}</td>
+            <td>{{ form.input }}</td>
+            <td>{{ form.target }}</td>
+        </tr>
     {{ form.csrf_token }}
-    </dl>
+    </table>
    <button type="submit">Submit</button>
 </form>
 
@@ -31,45 +39,31 @@
 <p id="algorithm_table"></p>
 
 
-
 <script>
-$(document).ready(function() {
-    function populateSelectFields() {
+function populateSelectFields() {
     var dataset_id = $('#dataset').val();
     $.getJSON(
         '{{ url }}/dataset/' + dataset_id + '/available-fields',
         function(data) {
+            let input = $('#input');
+            let target = $('#target');
+
             // Remove old options
-            $('#input').find('option').remove();
+            input.find('option').remove();
+            target.find('option').remove();
             // Add new items
             $.each(data, function (key, val) {
                 var option_item = '<option value="' + val + '">' + val + '</option>';
-                $('#input').append(option_item);
-                $('#target').append(option_item);
+                input.append(option_item);
+                target.append(option_item);
             });
+
+            target.get(0).selectedIndex = target.length;
         });
     }
-    $('#dataset').change(
-        populateSelectFields()
-    );
+$(document).ready(function() {
+    populateSelectFields();
 });
-
-
-    {#
-
-function datasetPreview() {
-    var x = document.getElementById("dataset").value;
-    {{ 'var y = ' + requests('http://loaclhost:5000/api/v1/datasets/' + x) }}
-    document.getElementById("dataset_table").innerHTML = "You selected: " + x;
-
-}
-
-function algorithmPreview() {
-    var x = document.getElementById("algorithm").value;
-    document.getElementById("algorithm_table").innerHTML = "You selected: " + x;
-}
-
-#}
 </script>
 
 </body>
