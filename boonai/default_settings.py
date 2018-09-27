@@ -11,6 +11,7 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 USER_ENABLE_EMAIL = False
 USER_ENABLE_USERNAME = True
+USER_APP_NAME = 'BoonAI'
 
 API_URI = 'http://localhost:5000'
 STORAGE_API = 'http://localhost:5000/api/v1/storage'

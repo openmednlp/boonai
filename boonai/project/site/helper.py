@@ -109,3 +109,11 @@ def url_csv_to_df(url):
             csv_content.decode('utf-8')
         )
     )
+
+
+def hateoas_get_link(response_json, rel_value, links_filed='links'):
+    links = response_json[links_filed]
+    for l in links:
+        if l['rel'] == rel_value:
+            return l['href']
+    raise ValueError('No file relation found in the links list')

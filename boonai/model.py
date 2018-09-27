@@ -61,6 +61,9 @@ class Dataset(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     description = db.Column(db.String(1000))
+    train = db.Column(db.Boolean)
+    test = db.Column(db.Boolean)
+    label = db.Column(db.Boolean)
     project_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete='CASCADE'))
@@ -87,16 +90,6 @@ class UserDatasets(db.Model):
     group_id = db.Column(db.Integer(), db.ForeignKey('group.id', ondelete='CASCADE'))
 
 
-# class Algorithm(db.Model):
-#     __tablename__ = 'algorithm'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(50))
-#     description = db.Column(db.String(1000))
-#     project_id = db.Column(db.Integer)
-#     user_id = db.Column(db.Integer)
-#     file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete='CASCADE'))
-
-
 class TrainedModel(db.Model):
     __tablename__ = 'trained_model'
     id = db.Column(db.Integer, primary_key=True)
@@ -106,7 +99,10 @@ class TrainedModel(db.Model):
     user_id = db.Column(db.Integer)
     algorithm_id = db.Column(db.Integer)
     file_id = db.Column(db.Integer)
-    dataset_id = db.Column(db.Integer(), db.ForeignKey('dataset.id', ondelete='CASCADE'))
+    dataset_id = db.Column(
+        db.Integer(),
+        db.ForeignKey('dataset.id', ondelete='CASCADE')
+    )
 
 
 class File(db.Model):

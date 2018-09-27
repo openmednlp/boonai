@@ -4,10 +4,12 @@ from flask import Response
 from flask import jsonify
 
 from flask_wtf.file import FileField, FileRequired
+from flask_user import login_required, current_user
 
-from wtforms import SelectField
+from wtforms import SelectField, StringField
 
 from flask_wtf import FlaskForm
+from wtforms.validators import Length
 from werkzeug.utils import secure_filename
 
 import requests
@@ -17,8 +19,32 @@ from pandas.io.json import json_normalize
 
 import json
 from boonai.project.site.helper import url_join, url_csv_to_df
+from boonai.project.site.datasets import get_available_fields
 
 mod = Blueprint('site_machine_learning', __name__, template_folder='templates')
+
+
+class TrainForm(FlaskForm):
+    name = StringField(
+        'Dataset Name',
+        [Length(min=1, max=50)]
+    )
+    description = StringField(
+        'Dataset Description',
+        [Length(min=1, max=500)]
+    )
+    dataset = SelectField(label='Dataset', coerce=str)
+    algorithm = SelectField(label='Algorithm', coerce=str)
+    input = SelectField(label='Input field')
+    target = SelectField(label='Target field')
+
+
+class PredictForm(FlaskForm):
+    dataset = SelectField(label='Dataset', coerce=str)
+    input = SelectField(label='Input field')
+    model = SelectField(label='Model')
+
+    # dataset_file = FileField('Dataset', [FileRequired()])
 
 
 def _get_link(links, rel_value):
@@ -28,6 +54,7 @@ def _get_link(links, rel_value):
     raise ValueError('No file relation found in the links list')
 
 
+# TODO: what is this for?
 @mod.route('/models', methods=['GET'])
 def models_get():
     models_api_url = current_app.config['MODELS_API']
@@ -83,22 +110,8 @@ def model(model_id):
     )
 
 
-class TrainForm(FlaskForm):
-    # name = StringField(
-    #     'Dataset Name',
-    #     [Length(min=5, max=25)]
-    # )
-    # description = StringField(
-    #     'Dataset Description',
-    #     [Length(min=5, max=35)]
-    # )
-    dataset = SelectField(label='Dataset', coerce=str)
-    algorithm = SelectField(label='Algorithm', coerce=str)
-    input = SelectField(label='Input field', coerce=str)
-    target = SelectField(label='Target field', coerce=str)
-
-
 @mod.route('/', methods=['GET'])
+@login_required
 def root():
     urls = [
         url_for('site_machine_learning.train'),
@@ -111,11 +124,14 @@ def root():
     return render_template('ml/index.html', links=zip(urls, names))
 
 
-@mod.route('/train', methods=['GET', 'POST'])
-def train():
+def get_user_datasets_choices(user_id):
     dataset_url = current_app.config['DATASETS_API']
 
-    r = requests.get(dataset_url)
+    datasets_url_user = '{}?userid={}'.format(
+        dataset_url,
+        user_id
+    )
+    r = requests.get(datasets_url_user)
     datasets = json.loads(r.content)['content']
 
     dataset_options = []
@@ -126,6 +142,31 @@ def train():
                 c['name']
             )
         )
+
+    return dataset_options
+
+
+@mod.route('/train', methods=['GET', 'POST'])
+@login_required
+def train():
+    # dataset_url = current_app.config['DATASETS_API']
+    #
+    # datasets_url_user = '{}?userid={}'.format(
+    #     dataset_url,
+    #     current_user.id
+    # )
+    # r = requests.get(datasets_url_user)
+    # datasets = json.loads(r.content)['content']
+    #
+    # dataset_options = []
+    # for c in datasets:
+    #     dataset_options.append(
+    #         (
+    #             str(c['id']),
+    #             c['name']
+    #         )
+    #     )
+
     algorithms_url = current_app.config['ALGORITHMS_API']
 
     r = requests.get(algorithms_url)
@@ -138,18 +179,35 @@ def train():
 
     form = TrainForm()
     form.algorithm.choices = algorithm_options
+
+    dataset_options = get_user_datasets_choices(current_user.id)
     form.dataset.choices = dataset_options
-    form.input.choices = []
-    form.target.choices = []
+
+    if form.is_submitted():
+        selected_dataset_value = form.dataset.data
+    else:
+        selected_dataset_value = dataset_options[0][0]
+
+    fields_dict = get_available_fields(selected_dataset_value).json.items()
+
+    form.input.choices = fields_dict
+    form.target.choices = fields_dict
 
     if form.validate_on_submit():
+        name = form.name.data
+        description = form.description.data
+
         dataset_id = form.dataset.data
         algorithm_id = form.algorithm.data
 
         model_api_url = current_app.config['MODELS_API']
         json_request = {
+            'name': name,
+            'description': description,
             "dataset_id": dataset_id,
-            "algorithm_id": algorithm_id
+            "algorithm_id": algorithm_id,
+            "user_id": current_user.id,
+            "project_id": 0
         }
 
         r = requests.post(
@@ -169,77 +227,77 @@ def train():
 
 
 @mod.route('/train/dataset/<int:dataset_id>', methods=['GET'])
+@login_required
 def train_dataset(dataset_id):
     return json.dumps(
         {'id': dataset_id}
     )
 
 
-@mod.route('/train/dataset/<int:dataset_id>/available-fields', methods=['GET'])
-def get_available_fields(dataset_id):
-    dataset_api_url = current_app.config['DATASETS_API']
-    dataset_url = url_join(dataset_api_url, str(dataset_id))
-    r = requests.get(dataset_url)
-    content = json.loads(r.content)
-    links = content['links']
 
-    file_url = None
-    for l in links:
-        if l['rel'] == 'file':
-            file_url = l['href']
-            break
-
-    df = url_csv_to_df(file_url)
-
-    return jsonify({c: c for c in df.columns})
-
-
-class PredictForm(FlaskForm):
-    model = SelectField(label='Model', coerce=str)
-    dataset_file = FileField('Dataset', [FileRequired()])
-
-
+import pandas as pd
 @mod.route('/predict', methods=['GET', 'POST'])
+@login_required
 def predict():
     models_api_url = current_app.config['MODELS_API']
-    r = requests.get(models_api_url)
-    models = json.loads(r.content)['content']
-    options = [
-        (
-            str(m['id']),
-            'data-{}-algo-{}'.format(
-                m['dataset_id'],
-                m['algorithm_id']
-            )
-        ) for m in models
-    ]
+    models_user_url = '{}?userid={}'.format(
+        models_api_url,
+        current_user.id
+    )
+    r = requests.get(models_user_url)
+    models_response = r.json()
+
+    model_file_url_dict = dict()
+    model_choices = []
+    for model_dict in models_response['content']:
+        model_id = str(model_dict['id'])
+        choice = (model_id, model_dict['name'])
+        model_choices.append(choice)
+        model_file_url_dict[model_id] = [l['href'] for l in model_dict['links'] if l['rel'] == 'self'][0]
 
     form = PredictForm()
-    form.model.choices = options
+
+    form.model.choices = model_choices
+
+    dataset_choices = get_user_datasets_choices(current_user.id)
+    form.dataset.choices = dataset_choices
+
+    if form.is_submitted():
+        selected_dataset_value = form.dataset.data
+    else:
+        selected_dataset_value = dataset_choices[0][0]
+
+    fields_dict = get_available_fields(selected_dataset_value).json.items()
+    form.input.choices = fields_dict
+
     if form.validate_on_submit():
-
-        # Don't forget the csrf, or it will fail.
-        file = request.files['dataset_file']
-        if not secure_filename(file.name):
-            # TODO make this better
-            flash('Wrong file name', 'error')
-            return render_template(
-                "ml/predict_form.html",
-                form=form,
-                url=url_for('site_machine_learning.predict')
-            )
-
-        api_url = '{}/{}'.format(
-                models_api_url,
-                form.model.data
+        # get dataset
+        datasets_api_url = current_app.config['DATASETS_API']
+        r = requests.get(
+                url_join(
+                    datasets_api_url,
+                    selected_dataset_value
+                )
         )
+        dataset_info = r.json()
 
+        dataset_file_url = [
+            l['href']
+            for l
+            in dataset_info['links']
+            if l['rel'] == 'file'
+        ][0]
+
+        df = url_csv_to_df(dataset_file_url)
+        input_df = df[[form.input.data]]
+
+        # run model
+        model_file_url = model_file_url_dict[form.model.data]
         r = requests.post(
-            api_url,
-            file.read(),
+            model_file_url,
+            input_df.to_csv(index=None),
             headers={'Content-Type': 'application/octet-stream'}
         )
-
         result = r.json()['content']
 
         df = DataFrame({'X': result['X'], 'y': result['y']})

@@ -1,16 +1,18 @@
 <!DOCTYPE html>
+
 <html>
     <head>
         <title>Dropzone</title>
         {{ dropzone.load() }}
         {{ dropzone.style('border: 2px dashed #0087F7; margin: 10%; min-height: 400px;') }}
+        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     </head>
     <body>
+        <br/>
+        <a href="{{ url_for('site_dataprep.root') }}">back</a>
+        <br/><br/>
         <h1>Dropzone!</h1>
-        Just drop txt files,</br>
-        or folder with files,</br>
-        or csv file or xls!</br></br>
-        (Don't do the xls. Really, don't)
+        <p>Just drop txt files, a directory, Excel file or csv.</p>
         {{ dropzone.create(action_view='site_dataprep.dropzone') }}
     </body>
 </html>

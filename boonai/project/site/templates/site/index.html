@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Site :D</title>
+    <title>BoonAI</title>
 </head>
 <body>
+
 {% extends "flask_user_layout.html" %}
 {% block content %}
-    <h2>{%trans%}Home page{%endtrans%}</h2>
+    <h2>{%trans%}Welcome to BoonAI: ML Platform for plebs{%endtrans%}</h2>
     <p><a href={{ url_for('user.register') }}>{%trans%}Register{%endtrans%}</a></p>
     <p><a href={{ url_for('user.login') }}>{%trans%}Sign in{%endtrans%}</a></p>
-    <p><a href={{ url_for('site.root') }}>{%trans%}Home Page{%endtrans%}</a> (accessible to anyone)</p>
-    <p><a href={{ url_for('site.member') }}>{%trans%}Member Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
-    <p><a href={{ url_for('site.admin') }}>{%trans%}Admin Page{%endtrans%}</a> (role_required: admin@example.com / Password1')</p>
-    <p><a href={{ url_for('site_datasets.root') }}>{%trans%}Datasets Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
-    <p><a href={{ url_for('site_machine_learning.root') }}>{%trans%}Train & Run Models Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
+    <p><a href={{ url_for('site.root') }}>{%trans%}Home Page{%endtrans%}</a></p>
+    <p><a href={{ url_for('site.member') }}>{%trans%}Member Page{%endtrans%}</a></p>
+    <p><a href={{ url_for('site.admin') }}>{%trans%}Admin Page{%endtrans%}</a></p>
+    <p><a href={{ url_for('site_datasets.root') }}>{%trans%}Datasets Page{%endtrans%}</a></p>
+    <p><a href={{ url_for('site_machine_learning.root') }}>{%trans%}Train & Run Models Page{%endtrans%}</a></p>
     <p><a href={{ url_for('site_dataprep.root') }}>{%trans%}DataPrep{%endtrans%}</a></p>
-    <p><a href={{ url_for('site.labeling') }}>{%trans%}Labeling, Sampling through Active Learning and Stuff Page{%endtrans%}</a> (login_required: member@example.com / Password1)</p>
+    <p><a href={{ url_for('site.labeling') }}>{%trans%}Labeling, Sampling through Active Learning and Stuff Page{%endtrans%}</a></p>
     <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
 {% endblock %}
-
 </body>
 </html>

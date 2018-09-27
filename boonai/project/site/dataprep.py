@@ -6,7 +6,7 @@ from flask import url_for, session
 from flask_uploads import UploadSet
 from flask_user import login_required, current_user
 
-from wtforms import StringField, SelectField, SelectMultipleField, SubmitField
+from wtforms import StringField, SelectField, SelectMultipleField, SubmitField, BooleanField
 from wtforms.validators import Length
 from flask_wtf import FlaskForm
 
@@ -58,6 +58,15 @@ class SubmitProcessed(FlaskForm):
     description = StringField(
         'Dataset Description',
         [Length(min=5, max=35)]
+    )
+    train = BooleanField(
+        'Train',
+    )
+    test = BooleanField(
+        'Test',
+    )
+    label = BooleanField(
+        'Label',
     )
 
 
@@ -357,7 +366,7 @@ def upload_proc_get():
     )
 
 
-def upload_dataset(file, name, description):
+def upload_dataset(file, name, description, train, test, label):
     datasets_api_url = current_app.config['DATASETS_API']
     storage_api_url = current_app.config['STORAGE_API']
     r = requests.post(
@@ -369,6 +378,9 @@ def upload_dataset(file, name, description):
     dataset_json = {
         'name': name,
         'description': description,
+        'train': train,  # TODO: maybe it can just accept true false
+        'test': test,
+        'label': label,
         'file_id': int(r.text),
         'user_id': current_user.id,
         'project_id': 0
@@ -388,7 +400,12 @@ def upload_proc_post():
         file_path = join(session['outputs'], 'processed.csv')
         with open(file_path, 'rb') as f:
             file_content = f.read()
-        name = form.name.data
-        description = form.description.data
-        upload_dataset(file_content, name, description)
+        upload_dataset(
+            file_content,
+            name=form.name.data,
+            description=form.description.data,
+            train= form.train.data,
+            test=form.test.data,
+            label=form.label.data
+        )
         return redirect(url_for('site_dataprep.root'))

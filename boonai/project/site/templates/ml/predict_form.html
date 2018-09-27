@@ -3,6 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <title>Generic Form</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <style>
+        th {
+            padding-top: 25px;
+            text-align: center;
+        }
+        td {
+            text-align: center;
+        }
+        #dataset {
+            width: 100%;
+        }
+        #algorithm {
+            width: 100%;
+        }
+        #target {
+            width: 100%;
+        }
+        #input {
+            width: 100%;
+        }
+        #target {
+            width: 100%;
+        }
+        table {
+            padding-bottom: 25px;
+        }
+    </style>
+
 </head>
 <body>
 
@@ -13,7 +43,52 @@
 <img src="{{ url_for('static', filename='nn_dance.gif') }}">
 
 {% from "partials/macros.html" import build_form with context %}
-{{ build_form(form, url) }}
+{#{ build_form(form, url) }#}
 
+<form action="{{ url }}" method="POST" enctype="multipart/form-data">
+    <table>
+        <tr>
+            <th>Dataset</th>
+            <th>Model</th>
+        </tr>
+
+        <tr>
+            <td>{{ form.dataset (**{"onChange":"populateSelectFields()"}) }}</td>
+            <td>{{ form.model }}</td>
+        </tr>
+
+        <tr>
+            <th>Input field</th>
+        </tr>
+
+        <tr>
+            <td>{{ form.input }}</td>
+        </tr>
+    {{ form.csrf_token }}
+    </table>
+   <button type="submit">Submit</button>
+</form>
+
+
+<script>
+    function populateSelectFields() {
+        var dataset_id = $('#dataset').val();
+        $.getJSON(
+            '/site/datasets/' + dataset_id + '/fields',
+            function(data) {
+                let input = $('#input');
+                // Remove old options
+                input.find('option').remove();
+                // Add new items
+                $.each(data, function (key, val) {
+                    var option_item = '<option value="' + val + '">' + val + '</option>';
+                    input.append(option_item);
+                });
+            });
+        }
+    $(document).ready(function() {
+        populateSelectFields();
+    });
+</script>
 </body>
 </html>

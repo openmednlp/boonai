@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, url_for
 from boonai.model import db, User, Role
 import datetime
 from flask_user import UserManager
@@ -7,6 +7,7 @@ from flask_dropzone import Dropzone
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_object('boonai.default_settings')
 app.config.from_pyfile('application.cfg', silent=False)
+
 
 # Dropzone settings TODO: move this to a proper location
 app.config['DROPZONE_UPLOAD_MULTIPLE'] = True

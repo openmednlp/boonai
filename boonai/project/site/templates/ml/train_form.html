@@ -4,7 +4,33 @@
     <meta charset="UTF-8">
     <title>Generic Form</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
-
+    <style>
+        th {
+            padding-top: 25px;
+            text-align: center;
+        }
+        td {
+            text-align: center;
+        }
+        #dataset {
+            width: 100%;
+        }
+        #algorithm {
+            width: 100%;
+        }
+        #target {
+            width: 100%;
+        }
+        #input {
+            width: 100%;
+        }
+        #target {
+            width: 100%;
+        }
+        table {
+            padding-bottom: 25px;
+        }
+    </style>
 </head>
 <body>
 
@@ -19,14 +45,31 @@
 <form action="{{ url }}" method="POST" enctype="multipart/form-data">
     <table>
         <tr>
+            <th>Name</th>
+            <th>Desctription</th>
+        </tr>
+
+        <tr>
+            <td>{{ form.name }}</td>
+            <td>{{ form.description}}</td>
+        </tr>
+
+        <tr>
             <th>Dataset</th>
             <th>Algorithm</th>
+        </tr>
+
+        <tr>
+            <td>{{ form.dataset (**{"onChange":"populateSelectFields()"}) }}</td>
+            <td>{{ form.algorithm }}</td>
+        </tr>
+
+        <tr>
             <th>Input field</th>
             <th>Target field</th>
         </tr>
+
         <tr>
-            <td>{{ form.dataset (**{"onChange":"populateSelectFields()"}) }}</td>
-            <td>{{ form.algorithm }} {#(**{"onChange":"algorithmPreview()"}) }}#}</td>
             <td>{{ form.input }}</td>
             <td>{{ form.target }}</td>
         </tr>
@@ -43,7 +86,7 @@
 function populateSelectFields() {
     var dataset_id = $('#dataset').val();
     $.getJSON(
-        '{{ url }}/dataset/' + dataset_id + '/available-fields',
+        '/site/datasets/' + dataset_id + '/fields',
         function(data) {
             let input = $('#input');
             let target = $('#target');

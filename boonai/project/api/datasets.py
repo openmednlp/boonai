@@ -75,10 +75,13 @@ class All(Resource):
         content = [{
             'id': d.id,
             'file_id': d.file_id,
-            'project_id': d.project_id,
             'name': d.name,
             'description': d.description,
+            'train': d.train,
+            'test': d.test,
+            'label': d.label,
             'user_id': d.user_id,
+            'project_id': d.project_id,
             'links': [
                 {
                     "rel": "self",
@@ -108,6 +111,9 @@ class All(Resource):
             name=posted_json['name'],
             description=posted_json['description'],
             user_id=posted_json['user_id'],
+            train=posted_json['train'],
+            test=posted_json['test'],
+            label=posted_json['label'],
             project_id=posted_json['project_id'],
             file_id=posted_json['file_id']
         )
@@ -140,11 +146,9 @@ class Single(Resource):
                     },
                     {
                         "rel": "file",
-                        "href": '/'.join(
-                            [
-                                storage_api_url.strip('/'),
-                                str(content['file_id'])
-                            ]
+                        "href": url_join(
+                            storage_api_url.strip('/'),
+                            str(content['file_id'])
                         )
                     }
                 ]

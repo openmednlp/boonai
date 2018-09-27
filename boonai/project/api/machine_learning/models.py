@@ -7,7 +7,7 @@ import requests
 import pandas as pd
 from io import StringIO
 import pickle
-
+from boonai.project.site.helper import url_join
 
 def row_to_dict(row):
     return dict(
@@ -46,7 +46,15 @@ class All(Resource):
     def get(self):
         # Get list of all models
 
-        trained_models = TrainedModel.query.all()
+        user_id = request.args.get('userid')
+        project_id = request.args.get('projectid')
+
+        query = TrainedModel.query
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+        trained_models = query.all()
 
         # create_hateoas(trained_models, ['id'], [1])
 
@@ -59,14 +67,17 @@ class All(Resource):
             model_dict['links'] = [
                 {
                     "rel": "self",
-                    "href": url_for(
-                        'machine_learning_models.single',
-                        model_id=model_dict['id']
+                    "href": url_join(
+                        base_url=request.base_url,
+                        url=model_dict['id']
                     )
                 },
                 {
                     "rel": "file",
-                    "href": url_for('storage.single', file_id=model_dict['file_id'])
+                    "href": url_join(
+                        base_url=current_app.config['STORAGE_API'],
+                        url=model_dict['file_id']
+                    )
                 }
             ]
 
@@ -75,7 +86,7 @@ class All(Resource):
             'links': [
                 {
                     "rel": "self",
-                    "href": url_for('machine_learning_models.all')
+                    "href": request.base_url
                 }
             ]
         }
@@ -87,8 +98,12 @@ class All(Resource):
         datasets_api = current_app.config['DATASETS_API']
 
         posted_json = request.get_json()
+        name = posted_json['name']
+        description = posted_json['description']
         dataset_id = posted_json['dataset_id']
         algorithm_id = int(posted_json['algorithm_id'])
+        user_id = posted_json['user_id']
+        project_id = posted_json['project_id']
 
         dataset_uri = datasets_api + '/' + dataset_id
         r_dataset = requests.get(dataset_uri)
@@ -115,10 +130,12 @@ class All(Resource):
         r = requests.post(storage_api, data=model_pickle)
         file_id = int(r.content)
         trained_model = TrainedModel(
-            name='some name from json form, created prior to this',
-            description='some nja nja',
+            name=name,
+            description=description,
             algorithm_id=int(algorithm_id),
             dataset_id=int(dataset_id),  # TODO enter correct data
+            user_id=user_id,
+            project_id=project_id,
             file_id=int(file_id)
         )
 
@@ -138,17 +155,23 @@ class Single(Resource):
     def get(self, model_id):
         # get sepcific model
         tm = TrainedModel.query.filter_by(id=model_id).first()
-        dict = row_to_dict(tm)
+        ceontent_dict = row_to_dict(tm)
         return {
-            'content': dict,
+            'content': ceontent_dict,
             'links': [
                 {
                     "rel": "self",
-                    "href": url_for('machine_learning_models.single', model_id=model_id)
+                    "href": url_join(
+                        base_url=request.base_url,
+                        url=model_id
+                    )
                 },
                 {
                     "rel": "file",
-                    "href": url_for('storage.single', file_id=dict['file_id'])
+                    "href": url_for(
+                        current_app.config['STORAGE_API'],
+                        file_id=ceontent_dict['file_id']
+                    )
                 }
             ]
 
@@ -168,13 +191,20 @@ class Single(Resource):
 
         result = {'X': list(df.ix[:, 0].values), 'y': y.tolist()}
 
+        self_href = url_join(
+            base_url=request.base_url,
+            url=url_for(
+                'machine_learning_models.single',
+                model_id=model_id
+            )
+        )
         return jsonify(
             {
                 'content': result,
                 'links': [
                     {
                         "rel": "self",
-                        "href": url_for('machine_learning_models.single', model_id=model_id)
+                        "href": self_href
                     }
                 ]
             }

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, flash
-from flask import current_app, url_for
+from flask import current_app, url_for, jsonify
 from flask_wtf.file import FileField, FileRequired
 
 from wtforms import StringField
@@ -16,7 +16,7 @@ from flask_user import login_required, current_user
 import pandas as pd
 import io
 
-from boonai.project.site.helper import upload_dataset, get_html_pagination_params
+from boonai.project.site.helper import upload_dataset, get_html_pagination_params, url_join, url_csv_to_df
 
 mod = Blueprint('site_datasets', __name__, template_folder='templates')
 
@@ -187,3 +187,23 @@ def dataset_delete(dataset_id):
     r_file = requests.delete(current_app.config['API_URI'] + file_url)
 
     return 'Delete is not implemented on the API side atm'  # TODO: make real response
+
+
+@mod.route('/<int:dataset_id>/fields', methods=['GET'])
+@login_required
+def get_available_fields(dataset_id):
+    dataset_api_url = current_app.config['DATASETS_API']
+    dataset_url = url_join(dataset_api_url, str(dataset_id))
+    r = requests.get(dataset_url)
+    content = json.loads(r.content)
+    links = content['links']
+
+    file_url = None
+    for l in links:
+        if l['rel'] == 'file':
+            file_url = l['href']
+            break
+
+    df = url_csv_to_df(file_url)
+
+    return jsonify({c: c for c in df.columns})
