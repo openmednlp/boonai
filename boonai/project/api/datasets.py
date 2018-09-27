@@ -85,19 +85,26 @@ class All(Resource):
             'links': [
                 {
                     "rel": "self",
-                    "href": url_for('datasets.single', dataset_id=d.id)
+                    "href": url_join(request.base_url, d.id)
                 }, {
                     "rel": "file",
                     "href": url_join(storage_api_url, d.file_id)
                 }]
         } for d in datasets]
 
+        self_href = (
+            request.base_url +
+            '?user_id={}'.format(user_id)
+            if user_id
+            else ''
+        )
+
         return {
             'content': content,
             'links': [
                 {
                     "rel": "self",
-                    "href": request.full_path
+                    "href": self_href
                 }
             ]
 
@@ -142,13 +149,13 @@ class Single(Resource):
                 'links': [
                     {
                         "rel": "self",
-                        "href": url_for('datasets.single', dataset_id=dataset_id)
+                        "href": url_join(request.base_url, dataset_id)
                     },
                     {
                         "rel": "file",
                         "href": url_join(
-                            storage_api_url.strip('/'),
-                            str(content['file_id'])
+                            storage_api_url,
+                            content['file_id']
                         )
                     }
                 ]

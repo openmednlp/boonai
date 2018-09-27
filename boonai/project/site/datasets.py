@@ -152,7 +152,7 @@ def dataset_list():
             current_user.id)
     )  # TODO: better params submit
 
-    data = json.loads(r.text)
+    data = r.json()
 
     datasets_df = json_normalize(data['content'])
 
