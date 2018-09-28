@@ -106,7 +106,7 @@ def url_csv_to_df(url):
     csv_content = requests.get(url).content
     return pd.read_csv(
         io.StringIO(
-            csv_content.decode('utf-8')
+            csv_content.decode('cp1252')
         )
     )
 

@@ -127,11 +127,8 @@ def root():
 def get_user_datasets_choices(user_id):
     dataset_url = current_app.config['DATASETS_API']
 
-    datasets_url_user = '{}?userid={}'.format(
-        dataset_url,
-        user_id
-    )
-    r = requests.get(datasets_url_user)
+    params = {'userid': user_id}
+    r = requests.get(dataset_url, params=params)
     datasets = json.loads(r.content)['content']
 
     dataset_options = []
@@ -234,15 +231,17 @@ def train_dataset(dataset_id):
     )
 
 
+from io import StringIO
+
+
 @mod.route('/predict', methods=['GET', 'POST'])
 @login_required
 def predict():
     models_api_url = current_app.config['MODELS_API']
-    models_user_url = '{}?userid={}'.format(
-        models_api_url,
-        current_user.id
-    )
-    r = requests.get(models_user_url)
+
+    params = {'userid': current_user.id}
+    r = requests.get(models_api_url, params=params)
+
     models_response = r.json()
 
     model_file_url_dict = dict()
@@ -293,8 +292,8 @@ def predict():
         model_file_url = model_file_url_dict[form.model.data]
         r = requests.post(
             model_file_url,
-            input_df.to_csv(index=None),
-            headers={'Content-Type': 'application/octet-stream'}
+            data=input_df.to_csv(index=False, encoding='utf-8').encode('utf-8'),
+            headers={'Content-type': 'text/plain; charset=utf-8'}
         )
         result = r.json()['content']
 

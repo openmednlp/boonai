@@ -121,7 +121,7 @@ def dataset_get(dataset_id):
     csv_content = requests.get(dataset_file_url).content
     df = pd.read_csv(
         io.StringIO(
-            csv_content.decode('utf-8')
+            csv_content.decode('cp1252')
         )
     )
 
@@ -146,14 +146,10 @@ def dataset_get(dataset_id):
 def dataset_list():
     datasets_api_url = current_app.config['DATASETS_API']
 
-    r = requests.get(
-        '{}?userid={}'.format(
-            datasets_api_url,
-            current_user.id)
-    )  # TODO: better params submit
+    params = {'userid': current_user.id}
+    r = requests.get(datasets_api_url, params=params)
 
     data = r.json()
-
     datasets_df = json_normalize(data['content'])
 
     urls = []

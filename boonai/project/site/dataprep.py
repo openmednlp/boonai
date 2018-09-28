@@ -169,6 +169,14 @@ def texts_to_json(dir_path):
 
     return dataset_json
 
+import chardet
+from chardet.universaldetector import UniversalDetector
+
+def get_encoding(file_path):
+    with open(file_path, 'rb') as f:
+        encoding_info_dict = chardet.detect(f.read())
+        print(encoding_info_dict)
+    return encoding_info_dict['encoding']
 
 @mod.route('/converter')
 @login_required
@@ -194,12 +202,18 @@ def converter():
         # TODO: can be optimized
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
+
+        print(chardet.detect(file_path))
+
         df = pd.read_csv(file_path)
         session['fields'] = df.columns.tolist()
 
     elif is_excel:
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
+
+        print(get_encoding(file_path))
+
         df = pd.read_excel(file_path)
         session['fields'] = df.columns.tolist()
 
@@ -213,7 +227,8 @@ def converter():
 
     df.to_csv(
         join(session['outputs'], 'original.csv'),
-        index=False
+        index=False,
+        encoding='utf-8'
     )
 
     return redirect(url_for('site_dataprep.field_selection_get'))
@@ -255,7 +270,8 @@ def field_selection_post():
         df = df[session['selected_fields']]
         df.to_csv(
             join(session['outputs'], 'selected_fields.csv'),
-            index = False
+            index=False,
+            encoding='utf-8'
         )
         # session['headers'] = None
         return redirect(url_for('site_dataprep.filter_data'))
@@ -327,7 +343,11 @@ def filter_data():
             headers_string=session['headers_string'],
             keywords_string=session['keywords_string']
         )
-        df.to_csv(processed_csv_path,index=False)
+        df.to_csv(
+            processed_csv_path,
+            index=False,
+            encoding='utf-8'
+        )
         session['processed'] = True
 
         if form.submit_button.data:

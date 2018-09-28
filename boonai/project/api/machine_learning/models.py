@@ -178,9 +178,9 @@ class Single(Resource):
         }
 
     def post(self, model_id):
-        posted_file = request.get_data()
-        csv = StringIO(posted_file.decode('cp1252'))
-        df = pd.read_csv(csv)
+        posted_file = request.get_data('content')
+        csv = StringIO(posted_file.decode('utf-8'))
+        df = pd.read_csv(csv, encoding='utf-8')
 
         tm = TrainedModel.query.filter_by(id=model_id).first()
         storage_api = current_app.config['STORAGE_API']
@@ -198,17 +198,15 @@ class Single(Resource):
                 model_id=model_id
             )
         )
-        return jsonify(
-            {
-                'content': result,
-                'links': [
-                    {
-                        "rel": "self",
-                        "href": self_href
-                    }
-                ]
-            }
-        )
+        return {
+            'content': result,
+            'links': [
+                {
+                    "rel": "self",
+                    "href": self_href
+                }
+            ]
+        }
 
 
 models_blueprint = Blueprint('machine_learning_models', __name__)
