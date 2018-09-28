@@ -234,8 +234,6 @@ def train_dataset(dataset_id):
     )
 
 
-
-import pandas as pd
 @mod.route('/predict', methods=['GET', 'POST'])
 @login_required
 def predict():
