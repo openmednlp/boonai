@@ -118,7 +118,7 @@ class All(Resource):
 
         r_storage = requests.get(storage_api + '/' + storage_id)
         dataset = r_storage.content
-        csv = StringIO(dataset.decode('cp1252'))
+        csv = StringIO(dataset)
         df = pd.read_csv(csv)
 
         func = functions_dict[algorithm_id] # TODO disable multithreading, cannot be run from thread

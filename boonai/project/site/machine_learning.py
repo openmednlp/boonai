@@ -1,16 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, flash
+from flask import Blueprint, render_template, redirect, flash
 from flask import current_app, url_for
 from flask import Response
-from flask import jsonify
 
-from flask_wtf.file import FileField, FileRequired
 from flask_user import login_required, current_user
 
 from wtforms import SelectField, StringField
 
 from flask_wtf import FlaskForm
 from wtforms.validators import Length
-from werkzeug.utils import secure_filename
 
 import requests
 
@@ -18,6 +15,7 @@ from pandas import DataFrame
 from pandas.io.json import json_normalize
 
 import json
+
 from boonai.project.site.helper import url_join, url_csv_to_df
 from boonai.project.site.datasets import get_available_fields
 
@@ -229,9 +227,6 @@ def train_dataset(dataset_id):
     return json.dumps(
         {'id': dataset_id}
     )
-
-
-from io import StringIO
 
 
 @mod.route('/predict', methods=['GET', 'POST'])

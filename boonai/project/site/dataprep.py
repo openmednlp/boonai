@@ -24,6 +24,9 @@ import magic
 import pandas as pd
 from os.path import splitext
 
+import chardet
+from chardet.universaldetector import UniversalDetector
+
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
 mod = Blueprint('site_dataprep', __name__, template_folder='templates')
@@ -148,6 +151,8 @@ def texts_to_json(dir_path):
         if isfile(join(dir_path, f))
     ]
 
+    encoding = get_encoding(file_paths[0])
+
     m = magic.Magic(mime=True)
 
     dataset_json = {
@@ -165,18 +170,17 @@ def texts_to_json(dir_path):
 
         with open(file_path) as f:
             dataset_json['id'].append(file_name)
-            dataset_json['text'].append(f.read())
+            dataset_json['text'].append(f.read().encode(encoding).decode('utf-8'))
 
     return dataset_json
 
-import chardet
-from chardet.universaldetector import UniversalDetector
 
 def get_encoding(file_path):
     with open(file_path, 'rb') as f:
         encoding_info_dict = chardet.detect(f.read())
         print(encoding_info_dict)
     return encoding_info_dict['encoding']
+
 
 @mod.route('/converter')
 @login_required
@@ -200,21 +204,29 @@ def converter():
 
     if is_csv:
         # TODO: can be optimized
+        from csv import Sniffer
+
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
 
-        print(chardet.detect(file_path))
+        # guess file encoding
+        encoding = get_encoding(file_path)
 
-        df = pd.read_csv(file_path)
+        # guess separator
+        with open(file_path, encoding=encoding) as f:
+            sniffer = Sniffer()
+            line = f.readline().encode(encoding).decode('utf-8')
+            dialect = sniffer.sniff(line)
+
+        df = pd.read_csv(file_path, encoding=encoding, dialect=dialect)
+
         session['fields'] = df.columns.tolist()
 
     elif is_excel:
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
 
-        print(get_encoding(file_path))
-
-        df = pd.read_excel(file_path)
+        df = pd.read_excel(file_path, encoding='utf-8')
         session['fields'] = df.columns.tolist()
 
     elif is_text:
