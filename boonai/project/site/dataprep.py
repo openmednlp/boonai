@@ -1,7 +1,7 @@
 from boonai.project.site.helper import extract_section, get_html_pagination_params
 
 from flask import Blueprint, render_template, request, redirect, current_app
-from flask import url_for, session
+from flask import url_for, session, flash
 
 from flask_uploads import UploadSet
 from flask_user import login_required, current_user
@@ -293,7 +293,7 @@ def field_selection_post():
 
 
 def process_df(csv_path, process_field, headers_string, keywords_string):
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, encoding='utf-8')
 
     # process headers
     headers = [
@@ -401,11 +401,19 @@ def upload_proc_get():
 def upload_dataset(file, name, description, train, test, label):
     datasets_api_url = current_app.config['DATASETS_API']
     storage_api_url = current_app.config['STORAGE_API']
-    r = requests.post(
-        storage_api_url,
-        file,
-        headers={'Content-Type': 'application/octet-stream'}
-    )
+    try:
+        r = requests.post(
+            storage_api_url,
+            file,
+            headers={'Content-Type': 'application/octet-stream'}
+        )
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        flash('OH NO!')
+        return False
+    except requests.exceptions.RequestException as err:
+        flash(err)
+        return False
 
     dataset_json = {
         'name': name,

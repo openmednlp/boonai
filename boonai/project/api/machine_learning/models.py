@@ -117,7 +117,7 @@ class All(Resource):
         storage_id = storage_uri.split('/')[-1] # TODO: fix db entries and remove this
 
         r_storage = requests.get(storage_api + '/' + storage_id)
-        dataset = r_storage.content
+        dataset = r_storage.content.decode('utf-8')
         csv = StringIO(dataset)
         df = pd.read_csv(csv)
 
@@ -155,9 +155,9 @@ class Single(Resource):
     def get(self, model_id):
         # get sepcific model
         tm = TrainedModel.query.filter_by(id=model_id).first()
-        ceontent_dict = row_to_dict(tm)
+        content_dict = row_to_dict(tm)
         return {
-            'content': ceontent_dict,
+            'content': content_dict,
             'links': [
                 {
                     "rel": "self",
@@ -168,9 +168,9 @@ class Single(Resource):
                 },
                 {
                     "rel": "file",
-                    "href": url_for(
+                    "href": url_join(
                         current_app.config['STORAGE_API'],
-                        file_id=ceontent_dict['file_id']
+                        content_dict['file_id']
                     )
                 }
             ]

@@ -290,6 +290,7 @@ def predict():
             data=input_df.to_csv(index=False, encoding='utf-8').encode('utf-8'),
             headers={'Content-type': 'text/plain; charset=utf-8'}
         )
+
         result = r.json()['content']
 
         df = DataFrame({'X': result['X'], 'y': result['y']})

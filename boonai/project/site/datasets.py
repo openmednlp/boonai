@@ -121,7 +121,7 @@ def dataset_get(dataset_id):
     csv_content = requests.get(dataset_file_url).content
     df = pd.read_csv(
         io.StringIO(
-            csv_content.decode('cp1252')
+            csv_content.decode('utf-8')
         )
     )
 
