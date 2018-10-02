@@ -51,18 +51,16 @@
             <th>Dataset</th>
             <th>Model</th>
         </tr>
-
         <tr>
             <td>{{ form.dataset (**{"onChange":"populateSelectFields()"}) }}</td>
             <td>{{ form.model }}</td>
         </tr>
 
         <tr>
-            <th>Input field</th>
+            <th>Input field</th><th>Export type</th>
         </tr>
-
         <tr>
-            <td>{{ form.input }}</td>
+            <td>{{ form.input }}</td><td>{{ form.type }}</td>
         </tr>
     {{ form.csrf_token }}
     </table>

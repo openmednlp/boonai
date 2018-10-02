@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, flash
 from flask import current_app, url_for
-from flask import Response
+from flask import Response, request
 
 from flask_user import login_required, current_user
 
@@ -41,8 +41,10 @@ class PredictForm(FlaskForm):
     dataset = SelectField(label='Dataset', coerce=str)
     input = SelectField(label='Input field')
     model = SelectField(label='Model')
-
-    # dataset_file = FileField('Dataset', [FileRequired()])
+    type = SelectField(
+        label='Type',
+        choices=[('excel', 'excel'), ('csv', 'csv')]
+    )
 
 
 def _get_link(links, rel_value):
@@ -228,6 +230,8 @@ def train_dataset(dataset_id):
         {'id': dataset_id}
     )
 
+import io
+import pandas as pd
 
 @mod.route('/predict', methods=['GET', 'POST'])
 @login_required
@@ -294,13 +298,28 @@ def predict():
         result = r.json()['content']
 
         df = DataFrame({'X': result['X'], 'y': result['y']})
-        csv = df.to_csv()
+
+        export_type = form.type.data
+        if export_type == 'excel':
+                output = io.BytesIO()
+                writer = pd.ExcelWriter(output, engine='xlsxwriter')
+                df.to_excel(writer, sheet_name='Sheet1', encoding='utf-8')
+                writer.save()
+                result = output.getvalue()
+                mimetype = "application/vnd.ms-excel"
+                filename = 'result.xlsx'
+        elif export_type == 'csv':
+            result = df.to_csv(encoding='utf-8')
+            mimetype = "text/csv"
+            filename = 'result.csv'
+        else:
+            raise NotImplementedError()
 
         return Response(
-            csv,
-            mimetype="text/csv",
+            result,
+            mimetype=mimetype,
             headers={
-                "Content-disposition": "attachment; filename=file.csv"
+                "Content-disposition": "attachment; filename={}".format(filename)
             }
         )
 
