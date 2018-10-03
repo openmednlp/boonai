@@ -1,12 +1,12 @@
-# boonai
-A simple ML suite for use by non-experts
+# BoonAI
+A simple ML suite for use by non-experts.
 
 ## How to run
 
-### Install PostgreSQL
-Follow the guide on the PostgreSQL homepage ([link](www.postgresql.org/download)) to install it on your platform.
+Everything will be run from a single Flask app, but this can be decoupled if needed. 
+The default database is SQLite, so no need to install or set anything upfront.
 
-Create the user, unless you want to use the default one. The app will create necessary tables the first time it is run.
+
 
 ### Create the Python environment
 1. Create virtual environment with your preferred tool (virtualenv, conda,...).
@@ -34,3 +34,8 @@ or [conda]() pages for more details.
     cd ~/path/to/boonai
     python boonai/run.py
     ```
+### (Optional) Install PostgreSQL
+If you don't want to use SQLite as your database, you might want ot install a proper database.
+Follow the guide on the PostgreSQL homepage ([link](www.postgresql.org/download)) to install it on your platform.
+
+Create the user, unless you want to use the default one. The app will create necessary tables the first time it is run.
