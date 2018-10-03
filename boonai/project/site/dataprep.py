@@ -25,7 +25,6 @@ import pandas as pd
 from os.path import splitext
 
 import chardet
-from chardet.universaldetector import UniversalDetector
 
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
@@ -80,29 +79,6 @@ def _get_link(links, rel_value):
     raise ValueError('No file relation found in the links list')
 
 
-@mod.route('/', methods=['GET'])
-@login_required
-def root():
-    urls = [
-        url_for('site_dataprep.dropzone'),
-    ]
-    names = [
-        'dropzone',
-    ]
-    return render_template('dataprep/index.html', links=zip(urls, names))
-
-
-def index():
-    # return dropzone template on GET request
-    urls = [
-        url_for('site_dataprep.dropzone'),
-    ]
-    names = [
-        'dropzone',
-    ]
-    return render_template('dataprep/index.html', links=zip(urls, names))
-
-
 @mod.route('/dropzone', methods=['GET', 'POST'])
 @login_required
 def dropzone():
@@ -124,7 +100,6 @@ def dropzone():
 
         is_homogeneous = len(set(types)) == 1
         if is_homogeneous:
-            # if session['content_type'].startswith('text/'):
             for key in file_items:
                 file_path = join(session['tmp_dir'], file_items[key].filename)
                 file_items[key].save(file_path)

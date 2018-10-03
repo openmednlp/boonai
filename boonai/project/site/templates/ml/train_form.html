@@ -86,7 +86,7 @@
 function populateSelectFields() {
     var dataset_id = $('#dataset').val();
     $.getJSON(
-        '/site/datasets/' + dataset_id + '/fields',
+        '/datasets/' + dataset_id + '/fields',
         function(data) {
             let input = $('#input');
             let target = $('#target');

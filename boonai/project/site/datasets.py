@@ -32,10 +32,12 @@ def _get_link(links, rel_value):
 @login_required
 def root():
     urls = [
+        url_for('site_dataprep.dropzone'),
         url_for('site_datasets.upload_get'),
         url_for('site_datasets.dataset_list')
     ]
     names = [
+        'dropzone',
         'upload',
         'list'
     ]
@@ -172,15 +174,15 @@ def dataset_list():
 @mod.route('/list/<int:dataset_id>/delete')
 @login_required
 def dataset_delete(dataset_id):
-    api_url = current_app.config['API_URI']
-    dataset_url = api_url + '/api/v1/datasets/' + str(dataset_id)
+    dataset_api_url = current_app.config['DATASETS_API']
+    dataset_url = url_join(dataset_api_url, dataset_id)
     r = requests.get(dataset_url)
 
     json_data = json.loads(r.content)
     file_url = _get_link(json_data['links'], 'file')
 
     r_dataset = requests.delete(dataset_url)
-    r_file = requests.delete(current_app.config['API_URI'] + file_url)
+    r_file = requests.delete(file_url)
 
     return 'Delete is not implemented on the API side atm'  # TODO: make real response
 
