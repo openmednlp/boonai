@@ -163,6 +163,11 @@ class Single(Resource):
             }
         )
 
+    def delete(self, dataset_id):
+        # it's gonna delete everything
+        # Dangerous, maybe jsut for super duper admin user
+        return {'never': 'gonna happen dataset single {}'.format(dataset_id)}, 200
+
 
 data_blueprint = Blueprint('datasets', __name__)
 data_api = Api(data_blueprint, '/v1')

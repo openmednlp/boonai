@@ -84,9 +84,9 @@ class Single(Resource):
             as_attachment=True,
             attachment_filename='%s.data' % file_id)
 
-    def delete(self):
+    def delete(self, file_id):
         # delete a model
-        return {'never': 'gonna happen STORAGE single file'}, 200
+        return {'never': 'gonna happen STORAGE single file {}'.format(file_id)}, 200
 
 
 storage_blueprint = Blueprint('storage', __name__)
