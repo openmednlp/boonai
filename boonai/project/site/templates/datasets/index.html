@@ -1,21 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "layout.html" %}
+{% block body %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
+    {% from "partials/macros.html" import build_list with context %}
 
-<body>
-<br/>
-<a href="{{ url_for('site.root') }}">back</a>
-<br/><br/>
-{% from "partials/macros.html" import build_list with context %}
-
-
-<img src="{{ url_for('static', filename='data-everywhere.png') }}">
-{{ build_list(links) }}
-
-
-</body>
-</html>
+    <img src="{{ url_for('static', filename='data-everywhere.png') }}">
+    {{ build_list(links) }}
+    
+{% endblock %}
