@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "layout.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>DataPrep</title>
-</head>
+{% block title %} :: Datasets :: Upload :: Field Selection{% endblock %}
 
-<body>
-<h1>Select Fileds Page!</h1>
+{% block body %}
+<h1>Select Fileds</h1>
 </br>
 <a href="{{ url_for('site_dataprep.dropzone') }}">Back</a><p>
 
@@ -22,9 +18,6 @@
     </dl>
    <button type="submit">Submit</button>
 </form>
-
-
-</body>
-</html>
+{% endblock %}
 
 

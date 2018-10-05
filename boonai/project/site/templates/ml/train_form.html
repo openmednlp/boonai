@@ -1,9 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Generic Form</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+{% extends "layout.html" %}
+
+{% block title %} :: ML :: Train{% endblock %}
+
+{% block head %}
     <style>
         th {
             padding-top: 25px;
@@ -31,16 +30,15 @@
             padding-bottom: 25px;
         }
     </style>
-</head>
-<body>
+{% endblock %}
 
+{% block body %}
 <br/>
 <a href="{{ url_for('site_machine_learning.root') }}">back</a>
 <br/><br/>
 
 <img src="{{ url_for('static', filename='train.png') }}">
 <br/><br/>
-
 
 <form action="{{ url }}" method="POST" enctype="multipart/form-data">
     <table>
@@ -108,8 +106,7 @@ $(document).ready(function() {
     populateSelectFields();
 });
 </script>
+{% endblock %}
 
-</body>
-</html>
 
 

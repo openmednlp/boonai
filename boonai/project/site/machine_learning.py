@@ -15,6 +15,8 @@ from pandas import DataFrame
 from pandas.io.json import json_normalize
 
 import json
+import io
+import pandas as pd
 
 from boonai.project.site.helper import url_join, url_csv_to_df
 from boonai.project.site.datasets import get_available_fields
@@ -146,27 +148,17 @@ def get_user_datasets_choices(user_id):
 @mod.route('/train', methods=['GET', 'POST'])
 @login_required
 def train():
-    # dataset_url = current_app.config['DATASETS_API']
-    #
-    # datasets_url_user = '{}?userid={}'.format(
-    #     dataset_url,
-    #     current_user.id
-    # )
-    # r = requests.get(datasets_url_user)
-    # datasets = json.loads(r.content)['content']
-    #
-    # dataset_options = []
-    # for c in datasets:
-    #     dataset_options.append(
-    #         (
-    #             str(c['id']),
-    #             c['name']
-    #         )
-    #     )
-
     algorithms_url = current_app.config['ALGORITHMS_API']
 
     r = requests.get(algorithms_url)
+    if r.status_code not in (200, 201):
+        flash(
+            'Could not retrieve algorithms - '
+            'error code: {}'.format(r.status_code),
+            'danger'
+        )
+        return redirect(url_for('site_machine_learning.root'))
+
     algorithms = json.loads(r.content)['content']
     algorithm_options = []
     for a in algorithms:
@@ -178,6 +170,10 @@ def train():
     form.algorithm.choices = algorithm_options
 
     dataset_options = get_user_datasets_choices(current_user.id)
+    if not dataset_options:
+        flash('Upload some datasets first', 'warning')
+        return redirect(url_for('site_machine_learning.root'))
+
     form.dataset.choices = dataset_options
 
     if form.is_submitted():
@@ -211,9 +207,18 @@ def train():
             model_api_url,
             json=json_request
         )
+        if r.status_code not in (200, 201):
+            if 500 <= r.status_code < 600:
+                flash(
+                    'Training failed - the model API call '
+                    'returned code: {}'.format(r.status_code),
+                    'warning'
+                )
+            else:
+                flash('Something is not right, check if fields are the correct type', 'danger')
+            return redirect(url_for('site_machine_learning.train'))
 
-        print(r)
-
+        flash('The model has been trained', 'success')
         return redirect(url_for('site_machine_learning.train'))
 
     return render_template(
@@ -223,15 +228,14 @@ def train():
     )
 
 
-@mod.route('/train/dataset/<int:dataset_id>', methods=['GET'])
-@login_required
-def train_dataset(dataset_id):
-    return json.dumps(
-        {'id': dataset_id}
-    )
+# TODO: Is this ever used?
+# @mod.route('/train/dataset/<int:dataset_id>', methods=['GET'])
+# @login_required
+# def train_dataset(dataset_id):
+#     return json.dumps(
+#         {'id': dataset_id}
+#     )
 
-import io
-import pandas as pd
 
 @mod.route('/predict', methods=['GET', 'POST'])
 @login_required
@@ -257,6 +261,13 @@ def predict():
 
     dataset_choices = get_user_datasets_choices(current_user.id)
     form.dataset.choices = dataset_choices
+
+    if not dataset_choices or not model_choices:
+        if not dataset_choices:
+            flash('Upload some datasets first', 'warning')
+        if not model_choices:
+            flash('No models - try training some first', 'warning')
+        return redirect(url_for('site_machine_learning.root'))
 
     if form.is_submitted():
         selected_dataset_value = form.dataset.data
@@ -295,6 +306,14 @@ def predict():
             headers={'Content-type': 'text/plain; charset=utf-8'}
         )
 
+        if r.status_code not in (200, 201):
+            flash(
+                'Prediction failed - model API call '
+                'returned code: {}'.format(r.status_code),
+                'warning'
+            )
+            return redirect(url_for('site_machine_learning.predict'))
+
         result = r.json()['content']
 
         df = DataFrame({'X': result['X'], 'y': result['y']})
@@ -313,7 +332,8 @@ def predict():
             mimetype = "text/csv"
             filename = 'result.csv'
         else:
-            raise NotImplementedError()
+            flash('Nonexistent export type', 'danger')
+            return redirect(url_for('.predict'))
 
         return Response(
             result,

@@ -93,7 +93,11 @@ def get_html_pagination_params(request_args, df, record_name='dataset'):
 
     start = (page - 1) * per_page
     end = start + per_page - 1
-    params['page_data'] = df.loc[start:end].values.tolist()
+    params['page_data'] = (
+        []
+        if df.empty
+        else df.loc[start:end].values.tolist()
+    )
 
     return params
 

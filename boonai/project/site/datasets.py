@@ -14,9 +14,12 @@ import json
 from flask_user import login_required, current_user
 
 import pandas as pd
+from pandas.errors import EmptyDataError
+
 import io
 
 from boonai.project.site.helper import upload_dataset, get_html_pagination_params, url_join, url_csv_to_df
+
 
 mod = Blueprint('site_datasets', __name__, template_folder='templates')
 
@@ -33,12 +36,10 @@ def _get_link(links, rel_value):
 def root():
     urls = [
         url_for('site_dataprep.dropzone'),
-        url_for('site_datasets.upload_get'),
         url_for('site_datasets.dataset_list')
     ]
     names = [
         'dropzone',
-        'upload',
         'list'
     ]
     return render_template('datasets/index.html', links=zip(urls, names))
@@ -59,48 +60,6 @@ class Submit(FlaskForm):
     )
 
 
-# TODO: Upload section is obsolete - data prep covers this part now
-@mod.route('/upload', methods=['GET'])
-@login_required
-def upload_get():
-    form = Submit()
-    return render_template(
-        'datasets/upload.html',
-        form=form,
-        url=url_for('site_datasets.upload_get')
-    )
-
-
-@mod.route('/upload', methods=['POST'])
-@login_required
-def upload_post():
-    form = Submit()
-    if not form.validate_on_submit():
-        return redirect(url_for('site_datasets.upload_get'))
-
-    file = request.files['file']
-    if not secure_filename(file.name):
-        # TODO make this better
-        flash('Wrong file name', 'error')
-        return render_template(
-            "datasets/upload.html",
-            form=form,
-            url=url_for('site_datasets.upload_get')
-        )
-    name = form.name.data
-    description = form.description.data
-    upload_dataset(
-        file.read(),
-        name,
-        description,
-        user_id=current_user.id,
-        project_id=0)  # TODO Project ID is fake
-
-    flash('Thanks for uploading the file')
-
-    return redirect(url_for('site_datasets.upload_get'))
-
-
 @mod.route('/list/<int:dataset_id>')
 @login_required
 def dataset_get(dataset_id):
@@ -108,24 +67,35 @@ def dataset_get(dataset_id):
     dataset_info_url = '/'.join([s.strip('/') for s in [dataset_api_url, str(dataset_id)]])
     r = requests.get(dataset_info_url)
 
+    if r.status_code != 200:
+        flash('Dataset API response code was {}, cannot fetch the dataset'.format(r.status_code), 'warning')
+        return redirect(url_for('site_datasets.dataset_list'))
+
     json_data = json.loads(r.content)
     dataset_file_url = _get_link(json_data['links'], 'file')
     delete_url = url_for(
         'site_datasets.dataset_delete',
         dataset_id=dataset_id
     )
-    # TODO:
-    # local url and then from that page 2 actions delete from get and then from storage
-    # (or make a job for that)
-    # _get_link(json_data['links'], 'delete') # requests.delete()
 
-    # TODO: Use helper
-    csv_content = requests.get(dataset_file_url).content
-    df = pd.read_csv(
-        io.StringIO(
-            csv_content.decode('utf-8')
+    r_storage = requests.get(dataset_file_url)
+    if r_storage.status_code != 200:
+        flash('Storage API response code was {}, cannot fetch the file'.format(r.status_code), 'warning')
+        return redirect(url_for('site_datasets.dataset_list'))
+
+    csv_content = r_storage.content
+    try:
+        df = pd.read_csv(
+            io.StringIO(
+                csv_content.decode('utf-8')
+            )
         )
-    )
+    except EmptyDataError:
+        flash('Could not make a dataset out of the storage file - it is empty', 'warning')
+        return redirect(url_for('site_datasets.dataset_list'))
+
+    if df.empty:
+        flash('Cannot show dataset - it is empty', 'warning')
 
     html_params = get_html_pagination_params(
         request.args,
@@ -139,7 +109,6 @@ def dataset_get(dataset_id):
         pagination=html_params['pagination'],
         download_url=dataset_file_url,
         delete_url=delete_url,
-        # url=url_for('site_dataprep.field_selection_get')
     )
 
 
@@ -150,6 +119,10 @@ def dataset_list():
 
     params = {'userid': current_user.id}
     r = requests.get(datasets_api_url, params=params)
+
+    if r.status_code != 200:
+        flash('Could not get the dataset list from the Dataset API', 'warning')
+        return redirect(url_for('site_datasets.root'))
 
     data = r.json()
     datasets_df = json_normalize(data['content'])
@@ -184,7 +157,9 @@ def dataset_delete(dataset_id):
     r_dataset = requests.delete(dataset_url)
     r_file = requests.delete(file_url)
 
-    return 'Delete is not implemented on the API side atm'  # TODO: make real response
+    flash('Not yet implemented', 'info')
+
+    return redirect(url_for('.dataset_get', dataset_id=dataset_id))
 
 
 @mod.route('/<int:dataset_id>/fields', methods=['GET'])

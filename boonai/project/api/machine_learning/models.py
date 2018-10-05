@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, url_for, current_app, redirect
-from flask_restful import Resource, Api
+from flask_restful import Resource, Api, abort
 from boonai.model import TrainedModel
 from boonai.project.api.machine_learning.algorithm_selection import functions_dict
 from boonai.project import db
@@ -9,6 +9,7 @@ from io import StringIO
 import pickle
 from boonai.project.site.helper import url_join
 
+
 def row_to_dict(row):
     return dict(
         (col, getattr(row, col))
@@ -16,31 +17,6 @@ def row_to_dict(row):
         in row.__table__.columns.keys()
     )
 
-
-# def create_hateoas(query_result, param_names, param_values):
-#
-#     query_result_dict = [
-#         row_to_dict(row)
-#         for row in query_result
-#     ]
-#     for dict in query_result_dict:
-#
-#         param_dict = {n: v for n,v in zip(param_names, param_values)}
-#         dict['links'] = [
-#             {
-#                 "rel": "self",
-#                 "href": url_for(
-#                     'machine_learning.single',
-#                     model_id=dict['id']
-#                 )
-#             },
-#             {
-#                 "rel": "file",
-#                 "href": url_for('storage.single', *param_dict)
-#             }
-#         ]
-#
-#     return 'bummer'
 
 class All(Resource):
     def get(self):
@@ -55,9 +31,6 @@ class All(Resource):
         if project_id:
             query = query.filter_by(project_id=project_id)
         trained_models = query.all()
-
-        # create_hateoas(trained_models, ['id'], [1])
-
         trained_models_dict = [
             row_to_dict(row)
             for row in trained_models
@@ -154,6 +127,7 @@ class All(Resource):
 class Single(Resource):
     def get(self, model_id):
         # get sepcific model
+
         tm = TrainedModel.query.filter_by(id=model_id).first()
         content_dict = row_to_dict(tm)
         return {
@@ -181,7 +155,6 @@ class Single(Resource):
         posted_file = request.get_data('content')
         csv = StringIO(posted_file.decode('utf-8'))
         df = pd.read_csv(csv, encoding='utf-8')
-
         tm = TrainedModel.query.filter_by(id=model_id).first()
         storage_api = current_app.config['STORAGE_API']
         r = requests.get('{}/{}'.format(storage_api, tm.file_id))

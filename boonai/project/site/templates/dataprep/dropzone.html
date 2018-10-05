@@ -1,27 +1,40 @@
-<!DOCTYPE html>
+{% extends "layout.html" %}
+{% block title %} :: Datasets :: Upload{% endblock %}
 
-<html>
-    <head>
-        <title>Dropzone</title>
-        {{ dropzone.load() }}
-        {{ dropzone.style('
-            border: 3px dotted #a48537;
-            margin: 0%;
-            min-height: 350px;
-            width:1050px;
-            background-image: url("/static/more_data.jpg");
-            font: bold 18px/200px arial;
-            color: white;
-        ') }}
+{% block head%}
+{{ dropzone.load() }}
+{{ dropzone.style('
+    border: 3px dotted #a48537;
+    margin: 0%;
+    min-height: 350px;
+    width:1050px;
+    background-image: url("/static/more_data.jpg");
+    font: bold 18px/200px arial;
+    color: white;
+') }}
+{% endblock %}
 
-        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    </head>
-    <body>
-        <br/>
-        <a href="{{ url_for('site_dataprep.root') }}">back</a>
-        <br/><br/>
-        <h1>Dropzone!</h1>
-        <p>Just drop txt files, a directory, Excel file or csv.</p>
-        {{ dropzone.create(action_view='site_dataprep.dropzone') }}
-    </body>
-</html>
+{% block body %}
+<br/>
+<a href="{{ url_for('site_datasets.root') }}">back</a>
+<br/><br/>
+<h1>Upload</h1>
+<p>
+    What can you upload:
+    <ul>
+        <li>Text files</li>
+        <li>Directory with text files</li>
+        <li>Excel files (xls, xlsx)</li>
+        <li>Comma sepparated values (csv)</li>
+    </ul>
+</p>
+<p>
+    How can you do it:
+    <ul>
+    <li>Drag and drop</li>
+    <li>Click on the drop zone and select any of the above</li>
+    </ul>
+</p>
+
+{{ dropzone.create(action_view='site_dataprep.dropzone') }}
+{% endblock %}

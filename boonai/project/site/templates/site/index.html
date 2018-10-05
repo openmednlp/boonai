@@ -1,13 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>BoonAI</title>
-</head>
-<body>
-
-{% extends "flask_user_layout.html" %}
-{% block content %}
+{% extends "layout.html" %}
+{% block body %}
     <h2>{%trans%}Welcome to BoonAI: ML Platform for plebs{%endtrans%}</h2>
     <p><a href={{ url_for('user.register') }}>{%trans%}Register{%endtrans%}</a></p>
     <p><a href={{ url_for('user.login') }}>{%trans%}Sign in{%endtrans%}</a></p>
@@ -19,5 +11,3 @@
     <p><a href={{ url_for('site.labeling') }}>{%trans%}Labeling, Sampling through Active Learning and Stuff Page{%endtrans%}</a></p>
     <p><a href={{ url_for('user.logout') }}>{%trans%}Sign out{%endtrans%}</a></p>
 {% endblock %}
-</body>
-</html>

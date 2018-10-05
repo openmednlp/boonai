@@ -25,6 +25,7 @@ import pandas as pd
 from os.path import splitext
 
 import chardet
+from csv import Sniffer
 
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
@@ -82,9 +83,6 @@ def _get_link(links, rel_value):
 @mod.route('/dropzone', methods=['GET', 'POST'])
 @login_required
 def dropzone():
-    # TODO: it would be better to call middle function to handle conversion instead of the filter fields
-    # handle image upload from Dropzone
-    print('diving in')
     if request.method == 'POST':
         session['dataset'] = None
         file_items = request.files
@@ -125,9 +123,6 @@ def texts_to_json(dir_path):
         in file_names
         if isfile(join(dir_path, f))
     ]
-
-    encoding = get_encoding(file_paths[0])
-
     m = magic.Magic(mime=True)
 
     dataset_json = {
@@ -136,10 +131,13 @@ def texts_to_json(dir_path):
     }
 
     for file_name, file_path in zip(file_names, file_paths):
+        encoding = get_encoding(file_path)
+
         print(
-            'current file {} is {}'.format(
+            'current file {} is {}, ecoding {}'.format(
                 file_path,
-                m.from_file(file_path)
+                m.from_file(file_path),
+                encoding
             )
         )
 
@@ -160,6 +158,10 @@ def get_encoding(file_path):
 @mod.route('/converter')
 @login_required
 def converter():
+    if not session['extension'] or not session['content_type']:
+        flash('Unsupported file type', 'info')
+        return redirect(url_for('.dropzone'))
+
     session['processed'] = False
     session['outputs'] = mkdtemp()
 
@@ -178,9 +180,6 @@ def converter():
     )
 
     if is_csv:
-        # TODO: can be optimized
-        from csv import Sniffer
-
         file_name = listdir(session['tmp_dir'])[0]
         file_path = join(session['tmp_dir'], file_name)
 
@@ -210,7 +209,8 @@ def converter():
         df = DataFrame(dataset_json)
 
     else:
-        raise NotImplementedError
+        flash('Uploaded file types have not been recognized')
+        return redirect(url_for('.dropzone'))
 
     df.to_csv(
         join(session['outputs'], 'original.csv'),
@@ -218,7 +218,7 @@ def converter():
         encoding='utf-8'
     )
 
-    return redirect(url_for('site_dataprep.field_selection_get'))
+    return redirect(url_for('.field_selection_get'))
 
 
 @mod.route('/field_selection', methods=['GET'])
@@ -227,7 +227,7 @@ def field_selection_get():
     # redirect to home if no images to display
     session_values = ["fields"]
     if not any(x in session for x in session_values):
-        return redirect(url_for('site_dataprep.dropzone'))
+        return redirect(url_for('.dropzone'))
 
     form = DatasetFieldsForm()
     fields = session['fields']
@@ -237,7 +237,7 @@ def field_selection_get():
         'dataprep/field_selection.html',
         datatable=fields,
         form=form,
-        url=url_for('site_dataprep.field_selection_get')
+        url=url_for('.field_selection_get')
     )
 
 
@@ -246,7 +246,7 @@ def field_selection_get():
 def field_selection_post():
     session_values = ["fields"]
     if not any(x in session for x in session_values):
-        return redirect(url_for('site_dataprep.dropzone'))
+        return redirect(url_for('.dropzone'))
     form = DatasetFieldsForm()
     fields = session['fields']
     form.selected.choices = list(zip(fields, fields))
@@ -261,10 +261,10 @@ def field_selection_post():
             encoding='utf-8'
         )
         # session['headers'] = None
-        return redirect(url_for('site_dataprep.filter_data'))
+        return redirect(url_for('.filter_data'))
 
     # TODO: see what to return here
-    return url_for('site_dataprep.dropzone')
+    return url_for('.dropzone')
 
 
 def process_df(csv_path, process_field, headers_string, keywords_string):
@@ -306,7 +306,7 @@ def filter_data():
     # TODO: check if all necessary values are in the
     session_values = ["selected_fields", "fields", "tmp_dir"]
     if not any(x in session for x in session_values):
-        return redirect(url_for('site_dataprep.field_selection_get'))
+        return redirect(url_for('.field_selection_get'))
 
     processed_csv_path = join(session['outputs'], 'processed.csv')
     selected_fields_csv_path = join(session['outputs'], 'selected_fields.csv')
@@ -338,7 +338,7 @@ def filter_data():
         session['processed'] = True
 
         if form.submit_button.data:
-            return redirect(url_for('site_dataprep.upload_proc_get'))
+            return redirect(url_for('.upload_proc_get'))
     elif session['processed']:
         df = pd.read_csv(processed_csv_path)
         form.headers.data = session['headers_string']
@@ -357,7 +357,7 @@ def filter_data():
         pagination=params['pagination'],
         fields=session['selected_fields'],
         form=form,
-        url=url_for('site_dataprep.filter_data')
+        url=url_for('.filter_data')
     )
 
 
@@ -369,7 +369,7 @@ def upload_proc_get():
     return render_template(
         'datasets/upload.html',
         form=form,
-        url=url_for('site_dataprep.upload_proc_get')
+        url=url_for('.upload_proc_get')
     )
 
 
@@ -384,10 +384,7 @@ def upload_dataset(file, name, description, train, test, label):
         )
         r.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        flash('OH NO!')
-        return False
-    except requests.exceptions.RequestException as err:
-        flash(err)
+        flash('Could not store file - got HTTPError from the Storage API', 'warning')
         return False
 
     dataset_json = {
@@ -400,10 +397,17 @@ def upload_dataset(file, name, description, train, test, label):
         'user_id': current_user.id,
         'project_id': 0
     }
-    requests.post(
-        datasets_api_url,
-        json=dataset_json
-    )
+
+    try:
+        r = requests.post(
+            datasets_api_url,
+            json=dataset_json
+        )
+    except requests.exceptions.HTTPError as err:
+        flash('Could not store file - got HTTPError from Dataset API', 'warning')
+        return False
+
+    flash('Dataset uploaded', 'success')
     return True
 
 
@@ -415,7 +419,7 @@ def upload_proc_post():
         file_path = join(session['outputs'], 'processed.csv')
         with open(file_path, 'rb') as f:
             file_content = f.read()
-        upload_dataset(
+        is_uploaded = upload_dataset(
             file_content,
             name=form.name.data,
             description=form.description.data,
@@ -423,4 +427,8 @@ def upload_proc_post():
             test=form.test.data,
             label=form.label.data
         )
-        return redirect(url_for('site_dataprep.root'))
+
+        if not is_uploaded:
+            return redirect(url_for('.upload_proc_get'))
+
+        return redirect(url_for('site_datasets.root'))

@@ -1,6 +1,9 @@
+{% extends "layout.html" %}
+
 {% from "partials/macros.html" import build_file_submit with context %}
 {% from "partials/macros.html" import build_list with context %}
 
+{% block body %}
 <br/>
 <a href="{{ url_for('site_datasets.root') }}">back</a>
 <br/><br/>
@@ -11,3 +14,4 @@
 <h1>Dataset List</h1>
 
 {{ build_list(links)}}
+{% endblock %}

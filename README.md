@@ -6,8 +6,6 @@ A simple ML suite for use by non-experts.
 Everything will be run from a single Flask app, but this can be decoupled if needed. 
 The default database is SQLite, so no need to install or set anything upfront.
 
-
-
 ### Create the Python environment
 1. Create virtual environment with your preferred tool (virtualenv, conda,...).
 Check [virtualenv](https://packaging.python.org/guides/installing-using-pip-and-virtualenv/) 
@@ -17,14 +15,14 @@ or [conda]() pages for more details.
 
 3. Install requirements with pip:
     ```bash
-    $ pip install -r requirements.txt
+    pip install -r requirements.txt
     ```
     Consider using conda to install numpy beforehand, so you will be able to benefit from the mkl speedups.
 
 ### Setup App and run
 1. Set PYTHONPATH if needed:
     ```bash
-    $ export PYTHONPATH="$HOME/path/to/boonai"
+    export PYTHONPATH="$HOME/path/to/boonai"
     ```
 
 2. Check the config file and correct values if needed. Don't forget to set the correct connection string for database.

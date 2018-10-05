@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, url_for, abort
+from flask import Blueprint, jsonify, request, abort
 from flask_restful import Resource, Api
 from boonai.model import Dataset
 from boonai.project import db
@@ -12,52 +12,6 @@ def row_to_dict(row):
         for col
         in row.__table__.columns.keys()
     )
-
-
-def get_paginated_list(results, url, start, limit):
-    # check if page exists
-    count = len(results)
-
-    if count == 0:
-        return {
-            'start': start,
-            'limit': limit,
-            'count': count,
-            'previous': '',
-            'next': '',
-            'field_selection': []
-        }
-
-    if count < start:
-        abort(404)
-
-    # make response
-    obj = {
-        'start': start,
-        'limit': limit,
-        'count': count
-    }
-
-    # make URLs
-    # make previous url
-    if start == 1:
-        obj['previous'] = ''
-    else:
-        start_previous = max(1, start - limit)
-        limit_previous = max(limit, start - 1 - start_previous)
-        obj['previous'] = url + '?start={}&limit={}'.format(start_previous, limit_previous)
-
-    # make next url
-    if start + limit > count:
-        obj['next'] = ''
-    else:
-        start_copy = start + limit
-        obj['next'] = url + '?start={}&limit={}'.format(start_copy, limit)
-
-    # finally extract result according to bounds
-    obj['field_selection'] = results[(start - 1):(start - 1 + limit)]
-    return obj
-
 
 class All(Resource):
     def get(self):
