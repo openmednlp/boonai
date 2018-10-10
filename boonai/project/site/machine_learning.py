@@ -17,6 +17,7 @@ from pandas.io.json import json_normalize
 import json
 import io
 import pandas as pd
+from uuid import uuid4
 
 from boonai.project.site.helper import url_join, url_csv_to_df
 from boonai.project.site.datasets import get_available_fields
@@ -315,8 +316,12 @@ def predict():
             return redirect(url_for('site_machine_learning.predict'))
 
         result = r.json()['content']
+        result_df = DataFrame({'X': result['X'], 'y': result['y']})
 
-        df = DataFrame({'X': result['X'], 'y': result['y']})
+        predicted_column_name = 'predicted'
+        if predicted_column_name in df.keys():
+            predicted_column_name += uuid4()
+        df[predicted_column_name] = result_df['y']
 
         export_type = form.type.data
         if export_type == 'excel':
