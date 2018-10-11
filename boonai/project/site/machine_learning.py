@@ -193,6 +193,8 @@ def train():
 
         dataset_id = form.dataset.data
         algorithm_id = form.algorithm.data
+        # Get name of selected algorythm
+        algorithm_name = dict(form.algorithm.choices).get(form.algorithm.data)
 
         model_api_url = current_app.config['MODELS_API']
         json_request = {

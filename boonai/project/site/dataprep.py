@@ -54,6 +54,7 @@ class FilterForm(FlaskForm):
 
 
 class SubmitProcessed(FlaskForm):
+    dropdown_list = [('text', 'Text'), ('numeric', 'Numeric'),('mixed', 'Mixed')]
     name = StringField(
         'Dataset Name',
         [Length(min=5, max=25)]
@@ -71,6 +72,8 @@ class SubmitProcessed(FlaskForm):
     label = BooleanField(
         'Label',
     )
+    features_type = SelectField('Features type', choices=dropdown_list, default=1)
+    labels_type = SelectField('Labels type', choices=dropdown_list, default=1)
 
 
 def _get_link(links, rel_value):
@@ -373,7 +376,7 @@ def upload_proc_get():
     )
 
 
-def upload_dataset(file, name, description, train, test, label):
+def upload_dataset(file, name, description, train, test, features_type, labels_type, label):
     datasets_api_url = current_app.config['DATASETS_API']
     storage_api_url = current_app.config['STORAGE_API']
     try:
@@ -393,6 +396,8 @@ def upload_dataset(file, name, description, train, test, label):
         'train': train,  # TODO: maybe it can just accept true false
         'test': test,
         'label': label,
+        'features_type': features_type,
+        'labels_type': labels_type,
         'file_id': int(r.text),
         'user_id': current_user.id,
         'project_id': 0
@@ -425,6 +430,8 @@ def upload_proc_post():
             description=form.description.data,
             train= form.train.data,
             test=form.test.data,
+            features_type=form.features_type.data,
+            labels_type=form.labels_type.data,
             label=form.label.data
         )
 

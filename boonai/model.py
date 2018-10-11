@@ -63,6 +63,8 @@ class Dataset(db.Model):
     description = db.Column(db.String(1000))
     train = db.Column(db.Boolean)
     test = db.Column(db.Boolean)
+    features_type = db.Column(db.String(20))
+    labels_type = db.Column(db.String(20))
     label = db.Column(db.Boolean)
     project_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)

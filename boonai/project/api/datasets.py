@@ -74,6 +74,8 @@ class All(Resource):
             user_id=posted_json['user_id'],
             train=posted_json['train'],
             test=posted_json['test'],
+            features_type = posted_json['features_type'],
+            labels_type = posted_json['labels_type'],
             label=posted_json['label'],
             project_id=posted_json['project_id'],
             file_id=posted_json['file_id']
