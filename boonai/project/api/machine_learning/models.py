@@ -1,13 +1,19 @@
-from flask import Blueprint, jsonify, request, url_for, current_app, redirect
-from flask_restful import Resource, Api, abort
-from boonai.model import TrainedModel
-from boonai.project.api.machine_learning.algorithm_selection import functions_dict
-from boonai.project import db
-import requests
-import pandas as pd
 from io import StringIO
-import pickle
-from boonai.project.site.helper import url_join
+from uuid import uuid4
+
+import pandas as pd
+import requests
+from flask import Blueprint, current_app, redirect, request, url_for
+from flask_restful import Api, Resource
+from sqlalchemy.orm import lazyload
+
+from boonai.model import ModelResource, TrainedModel
+from boonai.project import db
+from boonai.project.api.machine_learning.algorithm_selection import \
+    algorithm_dict
+from boonai.project.site import helper as h
+
+# TODO move this file level below and rename to ml
 
 
 def row_to_dict(row):
@@ -16,6 +22,22 @@ def row_to_dict(row):
         for col
         in row.__table__.columns.keys()
     )
+
+
+def dataset_id_to_df(dataset_id):
+    datasets_api = current_app.config['DATASETS_API']
+    dataset_uri = h.url_join(datasets_api, dataset_id)
+    r = requests.get(dataset_uri)
+    r_dataset = r.json()
+
+    storage_binary_uri = h.hateoas_get_link(r_dataset, 'binary')
+
+    r_binary = requests.get(storage_binary_uri)
+
+    # TODO: This is implementation for for text based problems only
+    dataset = r_binary.content.decode('utf-8')
+    csv = StringIO(dataset)
+    return pd.read_csv(csv)
 
 
 class All(Resource):
@@ -30,32 +52,18 @@ class All(Resource):
             query = query.filter_by(user_id=user_id)
         if project_id:
             query = query.filter_by(project_id=project_id)
-        trained_models = query.all()
-        trained_models_dict = [
-            row_to_dict(row)
-            for row in trained_models
-        ]
-
-        for model_dict in trained_models_dict:
-            model_dict['links'] = [
-                {
-                    "rel": "self",
-                    "href": url_join(
-                        base_url=request.base_url,
-                        url=model_dict['id']
-                    )
-                },
-                {
-                    "rel": "file",
-                    "href": url_join(
-                        base_url=current_app.config['STORAGE_API'],
-                        url=model_dict['file_id']
-                    )
-                }
-            ]
+        trained_models = query.options(lazyload('resources')).all()
+        trained_model_dicts = []
+        # links
+        for row in trained_models:
+            trained_model = row_to_dict(row)
+            trained_model['resources'] = dict()
+            for resource in row.resources:
+                trained_model['resources'][resource.name] = resource.uri
+            trained_model_dicts.append(trained_model)
 
         return {
-            'content': trained_models_dict,
+            'content': trained_model_dicts,
             'links': [
                 {
                     "rel": "self",
@@ -67,7 +75,7 @@ class All(Resource):
     def post(self):
         # Train the model with a submited dataset and store it
 
-        storage_api = current_app.config['STORAGE_API']
+        storage_adapter_api = current_app.config['STORAGE_ADAPTER_API']
         datasets_api = current_app.config['DATASETS_API']
 
         posted_json = request.get_json()
@@ -79,41 +87,36 @@ class All(Resource):
         project_id = posted_json['project_id']
 
         dataset_uri = datasets_api + '/' + dataset_id
-        r_dataset = requests.get(dataset_uri)
-        dataset_links = r_dataset.json()['links']
-        storage_uri = [
-            l['href']
-            for l in dataset_links
-            if l['rel'] == 'file'
-        ][0]
+        r = requests.get(dataset_uri)
+        r_dataset = r.json()
 
-        storage_id = storage_uri.split('/')[-1] # TODO: fix db entries and remove this
+        storage_binary_uri = h.hateoas_get_link(r_dataset, 'binary')
 
-        r_storage = requests.get(storage_api + '/' + storage_id)
-        dataset = r_storage.content.decode('utf-8')
+        r_binary = requests.get(storage_binary_uri)
+
+        # TODO: This is implementation for for text based problems only
+        dataset = r_binary.content.decode('utf-8')
         csv = StringIO(dataset)
         df = pd.read_csv(csv)
 
-        func = functions_dict[algorithm_id] # TODO disable multithreading, cannot be run from thread
+        algorithm = algorithm_dict[algorithm_id](storage_adapter_api)
+        algorithm.train(df.ix[:, 0], df.ix[:, 1])
+        algorithm.persist()
 
-        fitted_model = func(df.ix[:, 0], df.ix[:, 1])
-        # TODO: get some stats from training, like test scores
-
-        model_pickle = pickle.dumps(fitted_model)
-        r = requests.post(storage_api, data=model_pickle)
-        file_id = int(r.content)
         trained_model = TrainedModel(
             name=name,
             description=description,
             algorithm_id=int(algorithm_id),
-            dataset_id=int(dataset_id),  # TODO enter correct data
+            dataset_id=dataset_uri,  # TODO enter correct data
             user_id=user_id,
             project_id=project_id,
-            file_id=int(file_id)
         )
-
-        # TODO: Uncomment when done
-        db.session.add(trained_model)
+        for key in algorithm.resources:
+            resource = ModelResource()
+            resource.name = key
+            resource.uri = algorithm.resources[key]
+            trained_model.resources.append(resource)
+            db.session.add(trained_model)
         db.session.commit()
 
         return redirect(
@@ -130,49 +133,47 @@ class Single(Resource):
 
         tm = TrainedModel.query.filter_by(id=model_id).first()
         content_dict = row_to_dict(tm)
+
         return {
             'content': content_dict,
             'links': [
                 {
                     "rel": "self",
-                    "href": url_join(
-                        base_url=request.base_url,
-                        url=model_id
-                    )
-                },
-                {
-                    "rel": "file",
-                    "href": url_join(
-                        current_app.config['STORAGE_API'],
-                        content_dict['file_id']
+                    "href": h.url_join(
+                        request.base_url,
+                        model_id
                     )
                 }
             ]
-
         }
 
     def post(self, model_id):
-        posted_file = request.get_data('content')
-        csv = StringIO(posted_file.decode('utf-8'))
-        df = pd.read_csv(csv, encoding='utf-8')
-        tm = TrainedModel.query.filter_by(id=model_id).first()
-        storage_api = current_app.config['STORAGE_API']
-        r = requests.get('{}/{}'.format(storage_api, tm.file_id))
-        pickled_model = r.content
-        trained_model = pickle.loads(pickled_model)
-        y = trained_model.predict(df.ix[:, 0])
+        posted_json = request.get_json()
+        df = dataset_id_to_df(posted_json['dataset_id'])
+        x = df.get(posted_json['input_field'][0])
 
-        result = {'X': list(df.ix[:, 0].values), 'y': y.tolist()}
-
-        self_href = url_join(
-            base_url=request.base_url,
-            url=url_for(
-                'machine_learning_models.single',
-                model_id=model_id
-            )
+        trained_model = TrainedModel.query.filter_by(id=model_id).first()
+        algorithm = algorithm_dict[trained_model.algorithm_id](
+            storage_adapter_api=current_app.config['STORAGE_ADAPTER_API']
         )
+        algorithm.resources = posted_json['resources']
+        algorithm.load()
+        result = algorithm.predict(x)
+
+        predicted_column_name = 'predicted'
+        predicted_column_name += (
+            str(uuid4()) if predicted_column_name in df.keys() else ''
+        )
+        df[predicted_column_name] = result
+
+        self_href = h.url_join(
+            request.base_url,
+            'machine_learning_models.single',
+            model_id
+        )
+
         return {
-            'content': result,
+            'content': df.to_json(),
             'links': [
                 {
                     "rel": "self",

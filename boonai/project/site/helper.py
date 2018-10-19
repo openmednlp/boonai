@@ -1,9 +1,10 @@
-from flask import current_app
-import requests
-from flask_paginate import Pagination, get_page_parameter
-import re
-import pandas as pd
 import io
+import re
+
+import pandas as pd
+import requests
+from flask import current_app
+from flask_paginate import Pagination, get_page_parameter
 
 
 def upload_dataset(file, name, description, user_id, project_id):
@@ -29,7 +30,7 @@ def upload_dataset(file, name, description, user_id, project_id):
     return True
 
 
-def extract_section(header_patterns, string, strip=True):
+def extract_section(header_patterns, string, strip=True, empty_value=''):
     pattern = r'({})[ \t]*:?[ \t]*\n+((.+\n)+?)(\n|\Z){{1}}'.format('|'.join(header_patterns))
     findings = re.findall(
         pattern=pattern,
@@ -42,7 +43,7 @@ def extract_section(header_patterns, string, strip=True):
         if strip:
             return result.strip()
 
-    return ''
+    return empty_value
 
 
 def get_css_framework():
@@ -102,8 +103,8 @@ def get_html_pagination_params(request_args, df, record_name='dataset'):
     return params
 
 
-def url_join(base_url, url):
-    return '/'.join([base_url.strip('/'), str(url)])
+def url_join(*args):
+    return '/'.join([str(arg) for arg in args])
 
 
 def url_csv_to_df(url):
@@ -115,9 +116,9 @@ def url_csv_to_df(url):
     )
 
 
-def hateoas_get_link(response_json, rel_value, links_filed='links'):
-    links = response_json[links_filed]
+def hateoas_get_link(single_json, lookup_str, links='links', rel='rel', href='href'):
+    links = single_json[links]
     for l in links:
-        if l['rel'] == rel_value:
-            return l['href']
+        if l[rel] == lookup_str:
+            return l[href]
     raise ValueError('No file relation found in the links list')

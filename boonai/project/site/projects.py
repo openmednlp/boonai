@@ -1,18 +1,15 @@
-from flask import Blueprint, render_template, request, redirect, flash, jsonify
-from flask import current_app, url_for
-from flask_wtf.file import FileField, FileRequired
-
-from wtforms import StringField
-from wtforms.validators import Length
-from flask_wtf import FlaskForm
-from werkzeug.utils import secure_filename
-
-import requests
-from pandas.io.json import json_normalize
 import json
 
+import requests
+from flask import (Blueprint, current_app, flash, jsonify, redirect,
+                   render_template, request, url_for)
 from flask_user import login_required, roles_required
-
+from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileRequired
+from pandas.io.json import json_normalize
+from werkzeug.utils import secure_filename
+from wtforms import StringField
+from wtforms.validators import Length
 
 mod = Blueprint('site_projects', __name__, template_folder='templates')
 
@@ -90,7 +87,7 @@ def dataset_get(dataset_id):
     r = requests.get(url)
 
     json_data = json.loads(r.content)
-    url = _get_link(json_data['links'], 'file')
+    url = _get_link(json_data['links'], 'file')  # Fix this
     delete_url = url_for('site_datasets.dataset_delete', dataset_id=dataset_id) #TODO: local url and then from that page 2 actions - delete from get and then from storage (or make a job for that) _get_link(json_data['links'], 'delete') # requests.delete()
     return '''
     <p>
@@ -176,9 +173,10 @@ def dataset_delete(dataset_id):
     api_url = current_app.config['API_URI']
     dataset_url = api_url + '/api/v1/datasets/' + str(dataset_id)
     r = requests.get(dataset_url)
-
     json_data = json.loads(r.content)
-    file_url = _get_link(json_data['links'], 'file')
+
+    # TODO:get storage delete uri from dataset
+    file_url = _get_link(json_data['links'], 'file')  # Fix this
 
     r_dataset = requests.delete(dataset_url)
     r_file = requests.delete(current_app.config['API_URI'] + file_url)

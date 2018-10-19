@@ -15,6 +15,7 @@ USER_ENABLE_USERNAME = True
 USER_APP_NAME = 'BoonAI'
 
 # APIs
+STORAGE_ADAPTER_API = 'http://localhost:5000/api/v1/storage-adapter'
 STORAGE_API = 'http://localhost:5000/api/v1/storage'
 DATASETS_API = 'http://localhost:5000/api/v1/datasets'
 ALGORITHMS_API = 'http://localhost:5000/api/v1/machine-learning/algorithms'

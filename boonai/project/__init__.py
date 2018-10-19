@@ -72,12 +72,14 @@ from boonai.project.api.machine_learning.algorithms import algorithms_blueprint
 
 from boonai.project.api.samples import al_blueprint
 from boonai.project.api.storage import storage_blueprint
+from boonai.project.api.storage_adapter import storage_adapter_blueprint
 
 app.register_blueprint(data_blueprint, url_prefix='/api')
 app.register_blueprint(algorithms_blueprint, url_prefix='/api')
 app.register_blueprint(models_blueprint, url_prefix='/api')
 app.register_blueprint(al_blueprint, url_prefix='/api')
 app.register_blueprint(storage_blueprint, url_prefix='/api')
+app.register_blueprint(storage_adapter_blueprint, url_prefix='/api')
 
 from boonai.project.site.routes import mod as site_mod
 from boonai.project.site.datasets import mod as datasets_mod

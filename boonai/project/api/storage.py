@@ -1,7 +1,9 @@
-from flask import Blueprint, jsonify, request, url_for, abort
-from flask_restful import Resource, Api
-from flask_user import current_user
-from boonai.model import File
+import io
+
+from flask import Blueprint, abort, jsonify, request, send_file, url_for
+from flask_restful import Api, Resource
+
+from boonai.model import Storage
 from boonai.project import db
 
 # Backend could be replaced with S3 or anything
@@ -20,24 +22,12 @@ def row_to_dict(row):
 class All(Resource):
     def get(self):
         # Get list of all files
-
-        files = File.query.with_entities(File.id).all()
-
-        file_ids = [
-            {'id': row.id}
-            for row in files
-        ]
-
-        for file_id in file_ids:
-            file_id['links'] = [
-                {
-                    "rel": "self",
-                    "href": url_for('storage.single', file_id=file_id['id'])
-                 }
-            ]
+        storages = Storage.query.with_entities(Storage.id).all()
+        single = Single()
+        storages_json = [single.get(row.id) for row in storages]
 
         return {
-            'content': file_ids,
+            'content': storages_json,
             'links': [
                 {
                     "rel": "self",
@@ -50,46 +40,37 @@ class All(Resource):
         # Add new file
         posted_data = request.get_data()
 
-        file = File(
-            content=posted_data
+        storage_object = Storage(
+            binary=posted_data
         )
-
-        db.session.add(file)
+        db.session.add(storage_object)
         db.session.commit()
 
-        return file.id, 201
-
-    #  TODO: batch update missing?
-    def delete(self):
-        # it's gonna delete everything
-        # Dangerous, maybe jsut for super duper admin user
-        return {'never': 'gonna happen dataset all'}, 200
+        return storage_object.id, 201
 
 
 class Single(Resource):
-    def get(self, file_id):
-        # get sepcific model
-        files = File.query.filter_by(id=file_id).first()
-
-        if files is None:
+    def get(self, storage_id):
+        storage = Storage.query.filter_by(id=storage_id).first()
+        if storage is None:
             return abort(404)
 
-        file_dict = row_to_dict(files)
+        storage_dict = row_to_dict(storage)
 
-        from flask import send_file
-        import io
         return send_file(
-            io.BytesIO(file_dict['content']),
+            io.BytesIO(storage_dict['binary']),
             mimetype='application/octet-stream',
             as_attachment=True,
-            attachment_filename='%s.data' % file_id)
+            attachment_filename='%s.data' % storage_id)
 
-    def delete(self, file_id):
+    def delete(self, storage_id):
         # delete a model
-        return {'never': 'gonna happen STORAGE single file {}'.format(file_id)}, 200
+        return {'never': 'gonna happen STORAGE single file {}'.format(storage_id)}, 200
+
+
 
 
 storage_blueprint = Blueprint('storage', __name__)
 storage_api = Api(storage_blueprint, '/v1')
 storage_api.add_resource(All, '/storage')
-storage_api.add_resource(Single, '/storage/<int:file_id>')
+storage_api.add_resource(Single, '/storage/<int:storage_id>')

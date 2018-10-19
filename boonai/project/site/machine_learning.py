@@ -1,25 +1,17 @@
-from flask import Blueprint, render_template, redirect, flash
-from flask import current_app, url_for
-from flask import Response, request
+import io
+import json
 
-from flask_user import login_required, current_user
-
-from wtforms import SelectField, StringField
-
+import pandas as pd
+import requests
+from flask import (Blueprint, Response, current_app, flash, redirect,
+                   render_template, url_for)
+from flask_user import current_user, login_required
 from flask_wtf import FlaskForm
+from pandas.io.json import json_normalize
+from wtforms import SelectField, StringField
 from wtforms.validators import Length
 
-import requests
-
-from pandas import DataFrame
-from pandas.io.json import json_normalize
-
-import json
-import io
-import pandas as pd
-from uuid import uuid4
-
-from boonai.project.site.helper import url_join, url_csv_to_df
+from boonai.project.site import helper as h
 from boonai.project.site.datasets import get_available_fields
 
 mod = Blueprint('site_machine_learning', __name__, template_folder='templates')
@@ -50,14 +42,7 @@ class PredictForm(FlaskForm):
     )
 
 
-def _get_link(links, rel_value):
-    for l in links:
-        if l['rel'] == rel_value:
-            return l['href']
-    raise ValueError('No file relation found in the links list')
-
-
-# TODO: what is this for?
+# TODO: This is not used at the moment
 @mod.route('/models', methods=['GET'])
 def models_get():
     models_api_url = current_app.config['MODELS_API']
@@ -91,12 +76,11 @@ def models_post():
 
 @mod.route('/models/<int:model_id>')
 def model(model_id):
-    url = url_join(current_app.config['MODELS_API'], str(model_id))
+    url = h.url_join(current_app.config['MODELS_API'], str(model_id))
     r = requests.get(url)
 
     json_data = json.loads(r.content)
-    url = _get_link(json_data['links'], 'file')
-    # url = api_url + '/api/v1/storage/{}'.format(json_data['file_id'])
+    url = h.hateoas_get_link(json_data, 'file') # TODO: fix this
 
     return '''
     <p>
@@ -229,15 +213,6 @@ def train():
     )
 
 
-# TODO: Is this ever used?
-# @mod.route('/train/dataset/<int:dataset_id>', methods=['GET'])
-# @login_required
-# def train_dataset(dataset_id):
-#     return json.dumps(
-#         {'id': dataset_id}
-#     )
-
-
 @mod.route('/predict', methods=['GET', 'POST'])
 @login_required
 def predict():
@@ -248,13 +223,14 @@ def predict():
 
     models_response = r.json()
 
-    model_file_url_dict = dict()
+    model_resources_dict = dict()
     model_choices = []
     for model_dict in models_response['content']:
         model_id = str(model_dict['id'])
         choice = (model_id, model_dict['name'])
         model_choices.append(choice)
-        model_file_url_dict[model_id] = [l['href'] for l in model_dict['links'] if l['rel'] == 'self'][0]
+        # TODO: rename to resources or so
+        model_resources_dict[model_id] = model_dict['resources']
 
     form = PredictForm()
 
@@ -279,32 +255,17 @@ def predict():
     form.input.choices = fields_dict
 
     if form.validate_on_submit():
-        # get dataset
-        datasets_api_url = current_app.config['DATASETS_API']
-        r = requests.get(
-                url_join(
-                    datasets_api_url,
-                    selected_dataset_value
-                )
-        )
-        dataset_info = r.json()
+        post_json = {
+            'dataset_id': form.dataset.data,
+            'input_field': form.input.data,
+            'user_id': current_user.id,
+            'project_id': '',
+            'resources': model_resources_dict[form.model.data ]
+        }
 
-        dataset_file_url = [
-            l['href']
-            for l
-            in dataset_info['links']
-            if l['rel'] == 'file'
-        ][0]
-
-        df = url_csv_to_df(dataset_file_url)
-        input_df = df[[form.input.data]]
-
-        # run model
-        model_file_url = model_file_url_dict[form.model.data]
         r = requests.post(
-            model_file_url,
-            data=input_df.to_csv(index=False, encoding='utf-8').encode('utf-8'),
-            headers={'Content-type': 'text/plain; charset=utf-8'}
+            h.url_join(models_api_url, form.model.data),
+            json=post_json
         )
 
         if r.status_code not in (200, 201):
@@ -316,12 +277,7 @@ def predict():
             return redirect(url_for('site_machine_learning.predict'))
 
         result = r.json()['content']
-        result_df = DataFrame({'X': result['X'], 'y': result['y']})
-
-        predicted_column_name = 'predicted'
-        if predicted_column_name in df.keys():
-            predicted_column_name += uuid4()
-        df[predicted_column_name] = result_df['y']
+        df = pd.read_json(result)
 
         export_type = form.type.data
         if export_type == 'excel':
