@@ -1,7 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_user import UserMixin
-from itsdangerous import (TimedJSONWebSignatureSerializer as
-                          Serializer, BadSignature, SignatureExpired)
+from itsdangerous import BadSignature, SignatureExpired
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+
 db = SQLAlchemy()
 
 
@@ -58,15 +59,17 @@ class Role(db.Model):
 
 class Dataset(db.Model):
     __tablename__ = 'dataset'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50))
-    description = db.Column(db.String(1000))
-    train = db.Column(db.Boolean)
-    test = db.Column(db.Boolean)
-    label = db.Column(db.Boolean)
-    project_id = db.Column(db.Integer)
-    user_id = db.Column(db.Integer)
-    file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete='CASCADE'))
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(64))
+    description = db.Column(db.String(512))
+    train = db.Column(db.Boolean())
+    test = db.Column(db.Boolean())
+    label = db.Column(db.Boolean())
+    project_id = db.Column(db.Integer())
+    user_id = db.Column(db.Integer())
+    file_id = db.Column(db.Integer())
+    storage_adapter_uri = db.Column(db.String(512)) # db.Integer(), db.ForeignKey('storage_adapter.id'), onupdate='CASCADE')
+    binary_uri = db.Column(db.String(512))
 
 
 class UserRole(db.Model):
@@ -93,19 +96,49 @@ class UserDatasets(db.Model):
 class TrainedModel(db.Model):
     __tablename__ = 'trained_model'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50))
-    description = db.Column(db.String(1000))
+    name = db.Column(db.String(64))
+    description = db.Column(db.String(1024))
     project_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer)
     algorithm_id = db.Column(db.Integer)
-    file_id = db.Column(db.Integer)
     dataset_id = db.Column(
         db.Integer(),
         db.ForeignKey('dataset.id', ondelete='CASCADE')
     )
+    resources = db.relationship("ModelResource")
 
 
-class File(db.Model):
-    __tablename__ = 'file'
+class ModelResource(db.Model):
+    __tablename__ = 'model_resource'
     id = db.Column(db.Integer, primary_key=True)
-    content= db.Column(db.LargeBinary, nullable=False)
+    name = db.Column(db.String(64))
+    uri = db.Column(db.String(1024))
+    # bin_uri = db.Column(db.String(1024))
+    trained_model_id = db.Column(db.Integer, db.ForeignKey('trained_model.id'))
+    trained_model = db.relationship("TrainedModel", back_populates='resources')
+
+
+class StorageAdapter(db.Model):
+    __tablename__ = 'storage_adapter'
+    id = db.Column(db.Integer, primary_key=True)
+    uri = db.Column(db.String(1024))
+
+
+# class ModelStorageAdapter(db.Model):
+#     __tablename__ = 'model_storage_adapter'
+#     id = db.Column(db.Integer, primary_key=True)
+#     key = db.Column(db.String(64))
+#     trained_model_id = db.Column(
+#         db.Integer(),
+#         db.ForeignKey('trained_model.id', ondelete='CASCADE')
+#     )
+#     storage_adapter__id = db.Column(
+#         db.Integer(),
+#         db.ForeignKey('storage_adapter.id', ondelete='CASCADE')
+#     )
+
+
+class Storage(db.Model):
+    __tablename__ = 'storage'
+    id = db.Column(db.Integer, primary_key=True)
+    binary = db.Column(db.LargeBinary, nullable=False)

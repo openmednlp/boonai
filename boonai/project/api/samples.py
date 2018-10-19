@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from flask_restful import Resource, Api, reqparse
+from flask_restful import Api, Resource, reqparse
 
 parser = reqparse.RequestParser()
 parser.add_argument('labeled_sample')
@@ -36,4 +36,3 @@ class Sample(Resource):
 al_blueprint = Blueprint('al', __name__)
 data_api = Api(al_blueprint, '/v1')
 data_api.add_resource(Sample, '/get/<int:dataset_id>/samples')
-

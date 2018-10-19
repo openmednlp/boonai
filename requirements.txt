@@ -8,6 +8,7 @@ Flask-SQLAlchemy==2.3.2
 Flask-Uploads==0.2.1
 Flask-User==1.0.1.4
 Flask-WTF==0.14.2
+keras==2.2.4
 numpy==1.15.0
 pandas==0.23.4
 psycopg2==2.7.5
@@ -15,5 +16,6 @@ python-magic==0.4.15
 requests==2.19.1
 scikit-learn==0.19.1
 scipy==1.1.0
+SQLAlchemy==1.2.10
 xlrd==1.1.0
 XlsxWriter==1.1.1

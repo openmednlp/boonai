@@ -1,31 +1,27 @@
-from boonai.project.site.helper import extract_section, get_html_pagination_params
-
-from flask import Blueprint, render_template, request, redirect, current_app
-from flask import url_for, session, flash
-
-from flask_uploads import UploadSet
-from flask_user import login_required, current_user
-
-from wtforms import StringField, SelectField, SelectMultipleField, SubmitField, BooleanField
-from wtforms.validators import Length
-from flask_wtf import FlaskForm
-
-import requests
-
-from pandas import DataFrame
-
-from os.path import join, isfile
-from os import listdir
 import shutil
-
+from csv import Sniffer
+from os import listdir
+from os.path import isfile, join, splitext
 from tempfile import mkdtemp
-import magic
-
-import pandas as pd
-from os.path import splitext
 
 import chardet
-from csv import Sniffer
+import magic
+import numpy as np
+import pandas as pd
+import requests
+from flask import (Blueprint, current_app, flash, redirect, render_template,
+                   request, session, url_for)
+from flask_uploads import UploadSet
+from flask_user import current_user, login_required
+from flask_wtf import FlaskForm
+from pandas import DataFrame
+from wtforms import (BooleanField, SelectField, SelectMultipleField,
+                     StringField, SubmitField)
+from wtforms.validators import Length
+
+from boonai.project.site.helper import (extract_section,
+                                        get_html_pagination_params,
+                                        hateoas_get_link)
 
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
@@ -71,13 +67,6 @@ class SubmitProcessed(FlaskForm):
     label = BooleanField(
         'Label',
     )
-
-
-def _get_link(links, rel_value):
-    for l in links:
-        if l['rel'] == rel_value:
-            return l['href']
-    raise ValueError('No file relation found in the links list')
 
 
 @mod.route('/dropzone', methods=['GET', 'POST'])
@@ -270,6 +259,10 @@ def field_selection_post():
 def process_df(csv_path, process_field, headers_string, keywords_string):
     df = pd.read_csv(csv_path, encoding='utf-8')
 
+    column_type = df[process_field].dtype
+    is_numeric = np.issubdtype(column_type, np.number)
+    empty_value = None if is_numeric else ''
+
     # process headers
     headers = [
         h.strip()
@@ -279,7 +272,9 @@ def process_df(csv_path, process_field, headers_string, keywords_string):
     ]
     if headers:
         df[process_field] = df[process_field].apply(
-            lambda s: extract_section(headers, s)
+            lambda s: extract_section(
+                headers, str(s), empty_value=empty_value
+            )
         )
 
     # process keywords
@@ -291,10 +286,15 @@ def process_df(csv_path, process_field, headers_string, keywords_string):
     ]
     if keywords:
         df[process_field] = df[process_field].apply(
-            lambda s: s if any(str(k) in str(s).lower() for k in keywords) else ''
+            lambda s: s
+            if any(
+                str(k) in str(s).lower()
+                for k in keywords
+            )
+            else empty_value
         )
 
-    non_empty_field_positions = df[process_field] != ''
+    non_empty_field_positions = df[process_field] != empty_value
     df = df[non_empty_field_positions]
 
     return df.reset_index(drop=True)
@@ -375,17 +375,19 @@ def upload_proc_get():
 
 def upload_dataset(file, name, description, train, test, label):
     datasets_api_url = current_app.config['DATASETS_API']
-    storage_api_url = current_app.config['STORAGE_API']
+    storage_adapter_api_url = current_app.config['STORAGE_ADAPTER_API']
     try:
         r = requests.post(
-            storage_api_url,
+            storage_adapter_api_url,
             file,
             headers={'Content-Type': 'application/octet-stream'}
         )
         r.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        flash('Could not store file - got HTTPError from the Storage API', 'warning')
+        flash('Could not store file - got HTTPError from the Storage Adapter API', 'warning')
         return False
+
+    storage_adapter_json = r.json()
 
     dataset_json = {
         'name': name,
@@ -393,7 +395,8 @@ def upload_dataset(file, name, description, train, test, label):
         'train': train,  # TODO: maybe it can just accept true false
         'test': test,
         'label': label,
-        'file_id': int(r.text),
+        'storage_adapter_uri': hateoas_get_link(storage_adapter_json, 'self'),
+        'binary_uri': hateoas_get_link(storage_adapter_json, 'binary'),
         'user_id': current_user.id,
         'project_id': 0
     }
@@ -406,7 +409,9 @@ def upload_dataset(file, name, description, train, test, label):
     except requests.exceptions.HTTPError as err:
         flash('Could not store file - got HTTPError from Dataset API', 'warning')
         return False
-
+    if not 200 <= r.status_code < 300:
+        flash('Could not store file - Dataset API status code: {}'.format(r.status_code), 'warning')
+        return False
     flash('Dataset uploaded', 'success')
     return True
 

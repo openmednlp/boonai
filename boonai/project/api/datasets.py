@@ -1,8 +1,8 @@
-from flask import Blueprint, jsonify, request, abort
-from flask_restful import Resource, Api
+from flask import Blueprint, abort, current_app, jsonify, request, url_for
+from flask_restful import Api, Resource
+
 from boonai.model import Dataset
 from boonai.project import db
-from flask import current_app
 from boonai.project.site.helper import url_join
 
 
@@ -13,9 +13,10 @@ def row_to_dict(row):
         in row.__table__.columns.keys()
     )
 
+
 class All(Resource):
     def get(self):
-        storage_api_url = current_app.config['STORAGE_API']
+        storage_adapter_api_uri = current_app.config['STORAGE_ADAPTER_API']
 
         user_id = request.args.get('userid')
         project_id = request.args.get('projectid')
@@ -26,26 +27,10 @@ class All(Resource):
             query = query.filter_by(project_id=project_id)
         datasets = query.all()  # TODO: add admin and None if not logged in - security risk!
 
-        content = [{
-            'id': d.id,
-            'file_id': d.file_id,
-            'name': d.name,
-            'description': d.description,
-            'train': d.train,
-            'test': d.test,
-            'label': d.label,
-            'user_id': d.user_id,
-            'project_id': d.project_id,
-            'links': [
-                {
-                    "rel": "self",
-                    "href": url_join(request.base_url, d.id)
-                }, {
-                    "rel": "file",
-                    "href": url_join(storage_api_url, d.file_id)
-                }]
-        } for d in datasets]
+        single = Single()
+        content = [single.get(d.id) for d in datasets]
 
+        # TODO: arguments with dict if possible
         self_href = (
             request.base_url +
             '?user_id={}'.format(user_id)
@@ -67,7 +52,6 @@ class All(Resource):
     def post(self):
         # Add new dataset
         posted_json = request.get_json()
-
         dataset = Dataset(
             name=posted_json['name'],
             description=posted_json['description'],
@@ -76,13 +60,13 @@ class All(Resource):
             test=posted_json['test'],
             label=posted_json['label'],
             project_id=posted_json['project_id'],
-            file_id=posted_json['file_id']
+            storage_adapter_uri=posted_json['storage_adapter_uri'],
+            binary_uri=posted_json['binary_uri']
         )
-
         db.session.add(dataset)
         db.session.commit()
 
-        return {'you sent': dataset.id}, 201
+        return Single().get(dataset.id), 201
 
     #  TODO: batch update missing?
     def delete(self):
@@ -91,31 +75,39 @@ class All(Resource):
         return {'never': 'gonna happen dataset all'}, 200
 
 
+def get_binary_uri(dataset):
+    return dataset.binary_uri
+
+
 class Single(Resource):
     def get(self, dataset_id):
-        storage_api_url = current_app.config['STORAGE_API']
-        # get sepcific model
-        dataset = Dataset.query.filter_by(id=dataset_id).first()
-        content = row_to_dict(dataset)
-        return jsonify(
-            {
-                'content': content,
-                'links': [
-                    {
-                        "rel": "self",
-                        "href": url_join(request.base_url, dataset_id)
-                    },
-                    {
-                        "rel": "file",
-                        "href": url_join(
-                            storage_api_url,
-                            content['file_id']
-                        )
-                    }
-                ]
+        # storage_api_url = current_app.config['STORAGE_API']
 
-            }
-        )
+        dataset = Dataset.query.filter_by(id=dataset_id).first()
+        content = row_to_dict(dataset)  # TODO: get uri form DB, not id
+
+        return {
+            'id': dataset.id,
+            'name': dataset.name,
+            'description': dataset.description,
+            'do_train': dataset.train,
+            'do_test': dataset.test,
+            'do_label': dataset.label,
+            'user_id': dataset.user_id,
+            'project_id': dataset.project_id,
+            'links': [
+                {
+                    "rel": "self",
+                    "href": url_join(request.base_url, dataset.id)
+                }, {
+                    "rel": "storage",
+                    "href": dataset.storage_adapter_uri
+                }, {
+                    "rel": "binary",
+                    "href": get_binary_uri(dataset)
+                }
+            ]
+        }
 
     def delete(self, dataset_id):
         # it's gonna delete everything

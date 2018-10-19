@@ -1,6 +1,8 @@
 from flask import Blueprint, url_for
-from flask_restful import Resource, Api
-from boonai.project.api.machine_learning.algorithm_selection import algorithms_info, algorithms
+from flask_restful import Api, Resource
+
+from boonai.project.api.machine_learning.algorithm_selection import \
+    algorithms_info
 
 
 def row_to_dict(row):

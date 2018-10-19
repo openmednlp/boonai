@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template
 from flask_user import login_required, roles_required
 
-
 mod = Blueprint('site', __name__, template_folder='templates')
 
 # TODO: Needs to be split in multiple files - blueprints already in place so it's simple

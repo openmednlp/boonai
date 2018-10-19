@@ -111,3 +111,4 @@ venv.bak/
 
 # Project stuff
 boonai/project/api/machine_learning/resources
+*.h5
