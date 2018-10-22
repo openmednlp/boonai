@@ -107,7 +107,7 @@ class All(Resource):
             name=name,
             description=description,
             algorithm_id=int(algorithm_id),
-            dataset_id=dataset_uri,  # TODO enter correct data
+            dataset_id=dataset_id,
             user_id=user_id,
             project_id=project_id,
         )
