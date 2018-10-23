@@ -18,11 +18,15 @@ from boonai.project.api.machine_learning.definitions.nlp.RfcAlgorithm import \
 from boonai.project.api.machine_learning.definitions.nlp.SvcAlgorithm import \
     SvcAlgorithm
 
+from boonai.project.api.machine_learning.definitions.nlp.LstmAlgorithm import \
+    LstmAlgorithm
+
 algorithm_dict = {
     1: SvcAlgorithm,
     2: RfcAlgorithm,
     3: GridSearchSvcAlgorithm,
     4: GridSearchRfcAlgorithm,
+    5: LstmAlgorithm
 }
 
 

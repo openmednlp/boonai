@@ -15,7 +15,7 @@ class SklearnAlgorithm(Algorithm):
         return self.pipeline.predict(x)
 
     def persist(self):
-        self._persist_sklearn()
+        self._persist_sklearn(self.pipeline)
 
     def load(self):
         self.pipeline = self._load_sklearn()

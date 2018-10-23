@@ -1,11 +1,12 @@
-import pickle
 from abc import ABC, abstractmethod
-
-import h5py
-import requests
-from keras.models import load_model, save_model
-
 from boonai.project.site import helper as h
+import h5py
+from keras.models import load_model
+from keras import backend as K
+
+import pickle
+import requests
+import tempfile
 
 
 class Algorithm(ABC):
@@ -45,8 +46,8 @@ class Algorithm(ABC):
         bin_uri = h.hateoas_get_link(r_json, 'binary')
         return requests.get(bin_uri).content
 
-    def _persist_sklearn(self):
-        model_pickle = pickle.dumps(self.pipeline)
+    def _persist_sklearn(self, model):
+        model_pickle = pickle.dumps(model)
         r = requests.post(self.storage_adapter_api, data=model_pickle)
         storage_adapter_uri = h.hateoas_get_link(r.json(), 'self')
         self.resources['sklearn'] = storage_adapter_uri
@@ -54,13 +55,20 @@ class Algorithm(ABC):
 
     def _persist_keras(self, model):
         # Save the model to an in-memory-only h5 file.
-        with h5py.File(
-                'does not matter',
-                driver='core',
-                backing_store=False) as h5file:
-            save_model(model, h5file)
-            h5file.flush()  # Very important! Otherwise you get all zeroes below.
-            binary_data = h5file.fid.get_file_image()
+        _, tmp_path = tempfile.mkstemp()
+        model.save(tmp_path)
+
+        # with h5py.File(
+        #         'does not matter',
+        #         driver='core',
+        #         backing_store=False) as h5file:
+        #     save_model(model, h5file)
+        #     h5file.flush()  # Very important! Otherwise you get all zeroes below.
+        #     binary_data = h5file.fid.get_file_image()
+
+        with open(tmp_path, 'rb') as f:
+                binary_data = f.read()
+
         r = requests.post(self.storage_adapter_api, data=binary_data)
         storage_adapter_uri = h.hateoas_get_link(r.json(), 'self')
         self.resources['keras'] = storage_adapter_uri
@@ -71,5 +79,22 @@ class Algorithm(ABC):
         return pickle.loads(bin)
 
     def _load_keras(self):
-        bin_uri = self._get_binary(self.resources['keras'])
-        return load_model(requests.get(bin_uri).content)
+        K.clear_session()
+
+        image = self._get_binary(self.resources['keras'])
+
+        _, tmp_path = tempfile.mkstemp()
+        with open(tmp_path, 'wb') as f:
+            f.write(image)
+        return load_model(tmp_path)
+
+        # h5file = h5py.File(tmp_path)
+
+        # potential
+        # import tables
+        # h5file = tables.open_file(
+        #     "in-memory-sample.h5",
+        #     driver="H5FD_CORE",
+        #     driver_core_image=image,
+        #     driver_core_backing_store=0
+        # )
