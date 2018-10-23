@@ -1,104 +1,29 @@
-from typing import Dict, List, Tuple
+from boonai.project.api.machine_learning.definitions.Algorithm import Algorithm
 
-import requests
-from keras.layers import (LSTM, Activation, Conv1D, Dense, Dropout, Flatten,
-                          Input, MaxPooling1D)
-from keras.layers.embeddings import Embedding
+from typing import List
+
 # Keras
+from keras import backend
+from keras.layers import LSTM, Activation, Dense, Dropout, Input
+from keras.layers.embeddings import Embedding
 from keras.models import Model, Sequential
 from keras.optimizers import RMSprop
 from keras.preprocessing.sequence import pad_sequences
 from keras.preprocessing.text import Tokenizer
-from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import make_pipeline
 
 
-def train_cnn_w2v(X, y):
-    SEED_NUMBER = 2**10
-    RESOURCE_PATH = 'project/api/machine_learning/resources'
-    from os import listdir
-    from os import path
+#     from gensim.models import Word2Vec
+#     w2v_model = Word2Vec.load(w2v_path)
+#     embedding_matrix = w2v_model.wv
+#
 
-    filename = [
-        f
-        for f in listdir(RESOURCE_PATH)
-        if path.splitext(f)[1] == '.model'
-    ][0]
-    w2v_path = path.join(RESOURCE_PATH, filename)
-
-    #Padding missing
-    # try doing the whole thing like in the example
-    # maybe there is this indexing limitation, where we have to use
-    # integer indices, I mean they are just matrix indices, not keys
-    # good luck me
-
-    from sklearn.model_selection import train_test_split
-    x_train, x_val, y_train, y_val = train_test_split(
-        X,
-        y,
-        test_size=.2,
-        random_state=SEED_NUMBER
-    )
-    from gensim.models import Word2Vec
-    w2v_model = Word2Vec.load(w2v_path)
-    embedding_matrix = w2v_model.wv
-
-    from keras.models import Sequential
-    from keras.layers import Dense, Dropout
-    from keras.layers import Flatten
-    from keras.layers.embeddings import Embedding
-
-    keras_model = Sequential()
-    e = Embedding(
-        embedding_matrix.vectors.shape[0],
-        embedding_matrix.vectors.shape[1],
-        weights=[embedding_matrix.vectors],
-        input_length=45,
-        trainable=False
-    )
-    keras_model.add(e)
-    keras_model.add(Flatten())
-    keras_model.add(Dense(256, activation='relu'))
-    keras_model.add(Dense(1, activation='sigmoid'))
-    keras_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    keras_model.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5, batch_size=32, verbose=2)
-
-class Preparation(BaseEstimator, TransformerMixin):
-    # TODO: Make this dynamic, it should use max len from the training set, the longest sentence there
-    VOCAB_SIZE = 1000
-    MAXLEN = 200
-    def fit(self, X, y):
-        ### Create sequence
-        # vocabulary_size = 5000
-        self.tokenizer = Tokenizer(num_words=self.VOCAB_SIZE)
-        self.tokenizer.fit_on_texts(X)
-        #
-        # sequences = self.tokenizer.texts_to_sequences(X)
-        # self.maxlen = max(len(s) for s in sequences) + 20
-        # TODO: Or just hard code to 200 or so
-        return self
-
-    def transform(self, X):
-        # We do the custom pipline class because of this padding
-        # TODO: Maybe this can be done differently
-        sequences = self.tokenizer.texts_to_sequences(X)
-        return pad_sequences(sequences, maxlen=self.MAXLEN)
-
-
-
-def get_rnn_model():
-    VOCAB_SIZE = 1000
-    MAXLEN = 200
-    max_length = MAXLEN
-    vocab_size = VOCAB_SIZE
+def get_rnn_model(vocab_size, max_length):
     inputs = Input(name='inputs', shape=[max_length])
     layer = Embedding(vocab_size, 32, input_length=max_length)(inputs)
     layer = LSTM(128)(layer)
     layer = Dense(256, name='FC1')(layer)
     layer = Activation('relu')(layer)
-    layer = Dropout(0.01)(layer)
+    layer = Dropout(0.3)(layer)
     layer = Dense(1, name='out_layer')(layer)
     layer = Activation('sigmoid')(layer)
     model = Model(inputs=inputs, outputs=layer)
@@ -111,11 +36,47 @@ def get_rnn_model():
     return model
 
 
-def train_lstm(X, y):
-    pipeline = make_pipeline(
-        Preparation(),
-        KerasClassifier(build_fn=get_rnn_model, epochs=1, verbose=2)
-    )
-    pipeline.fit(X, y)
+class LstmAlgorithm(Algorithm):
 
-    return pipeline
+    name = 'NN LSTM'
+    description = 'NN LSTM for NLP'
+    creator = 1  # user id?
+    tags = ['nlp', 'text', 'reports']
+    groups = ['nlp']
+
+    VOCAB_SIZE = 200
+    MAXLEN = 600
+    EPOCHS = 5
+
+    tokenizer = None
+    model = None
+
+    def __init_subclass__(cls, **kwargs):
+        backend.clear_session()
+
+    def train(self, x: List[str], y: List[int]):
+        self.tokenizer = Tokenizer(num_words=self.VOCAB_SIZE)
+        self.tokenizer.fit_on_texts(x)
+
+        sequences = self.tokenizer.texts_to_sequences(x)
+        padded_sequences = pad_sequences(sequences, maxlen=self.MAXLEN)
+
+        self.model = get_rnn_model(self.VOCAB_SIZE, self.MAXLEN)
+        self.model.fit(padded_sequences, y, epochs=self.EPOCHS, verbose=2)
+
+    def predict(self, x):
+        if self.tokenizer is None or self.model is None:
+            self.load()
+        sequences = self.tokenizer.texts_to_sequences(x)
+        padded_sequences = pad_sequences(sequences, maxlen=self.MAXLEN)
+
+        y_proba = self.model.predict(padded_sequences)
+        return (y_proba >= 0.5).astype(int)
+
+    def persist(self):
+        self._persist_sklearn(self.tokenizer)
+        self._persist_keras(self.model)
+
+    def load(self):
+        self.tokenizer = self._load_sklearn()
+        self.model = self._load_keras()
