@@ -76,6 +76,8 @@ def dataset_get(dataset_id):
 
     storage_binary_uri = h.hateoas_get_link(json_data, 'binary')
 
+    label_url = h.hateoas_get_link(json_data, 'label')
+
     # TODO get storage delte uri from dataset
     delete_url = url_for(
         'site_datasets.dataset_delete',
@@ -113,6 +115,7 @@ def dataset_get(dataset_id):
         data=html_params['page_data'],
         pagination=html_params['pagination'],
         download_url=storage_binary_uri,
+        label_url=label_url,
         delete_url=delete_url,
     )
 

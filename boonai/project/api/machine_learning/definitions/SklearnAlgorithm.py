@@ -21,7 +21,7 @@ class SklearnAlgorithm(Algorithm):
         return roc_auc
 
     def persist(self):
-        self._persist_sklearn()
+        self._persist_sklearn(self.pipeline)
 
     def load(self):
         self.pipeline = self._load_sklearn()

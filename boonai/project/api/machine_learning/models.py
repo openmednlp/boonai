@@ -160,11 +160,19 @@ class Single(Resource):
         algorithm.load()
         result = algorithm.predict(x)
 
-        predicted_column_name = 'predicted'
-        predicted_column_name += (
-            str(uuid4()) if predicted_column_name in df.keys() else ''
-        )
-        df[predicted_column_name] = result
+        for idx, class_col in enumerate(result.T):
+            # Append column idx if more than one column
+            predicted_column_name = (
+                'predicted' + '_{}'.format(idx)
+                if result.shape[1] > 1
+                else ''
+            )
+
+            # If column name already exists, append unique ID
+            predicted_column_name += (
+                str(uuid4()) if predicted_column_name in df.keys() else ''
+            )
+            df[predicted_column_name] = class_col
 
         self_href = h.url_join(
             request.base_url,

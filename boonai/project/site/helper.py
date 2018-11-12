@@ -1,10 +1,13 @@
 import io
+from io import StringIO
+
 import re
 
 import pandas as pd
 import requests
 from flask import current_app
 from flask_paginate import Pagination, get_page_parameter
+
 
 
 def upload_dataset(file, name, description, user_id, project_id):
@@ -114,6 +117,24 @@ def url_csv_to_df(url):
             csv_content.decode('utf-8')
         )
     )
+
+
+def url_dataset_to_df(dataset_id):
+    datasets_api = current_app.config['DATASETS_API']
+    dataset_uri = url_join(datasets_api, dataset_id)
+    r_dataset = requests.get(dataset_uri)
+    dataset_links = r_dataset.json()['links']
+
+    storage_uri = [
+        l['href']
+        for l in dataset_links
+        if l['rel'] == 'binary'
+    ][0]
+
+    r_storage = requests.get(storage_uri)
+    dataset = r_storage.content.decode('utf-8')
+    csv = StringIO(dataset)
+    df = pd.read_csv(csv)
 
 
 def hateoas_get_link(single_json, lookup_str, links='links', rel='rel', href='href'):
