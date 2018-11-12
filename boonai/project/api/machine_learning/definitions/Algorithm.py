@@ -19,6 +19,7 @@ class Algorithm(ABC):
     pipeline = None
     storage_adapter_api = None
     resources = {}
+    params = {}
 
     def __init__(self, storage_adapter_api):
         self.storage_adapter_api = storage_adapter_api

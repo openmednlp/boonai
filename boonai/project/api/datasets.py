@@ -102,7 +102,12 @@ class Single(Resource):
                 }, {
                     "rel": "storage",
                     "href": dataset.storage_adapter_uri
-                }, {
+                },
+                {
+                    "rel": "label",
+                    "href": url_join(request.url_root, 'api', 'v1','active-learning')
+                },
+                {
                     "rel": "binary",
                     "href": get_binary_uri(dataset)
                 }
