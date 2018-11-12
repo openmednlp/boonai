@@ -31,6 +31,10 @@ class Algorithm(ABC):
         return
 
     @abstractmethod
+    def stats(self, y, y_hat):
+        return
+
+    @abstractmethod
     def persist(self):
         return
 
