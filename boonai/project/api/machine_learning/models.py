@@ -148,6 +148,12 @@ class Single(Resource):
         }
 
     def post(self, model_id):
+        """
+        Predict using trained model with selected data and fields
+        :param model_id: ID of the model used for prediction
+        :return: HATEOAS-like dict, where content is the df as JSON
+        """
+
         posted_json = request.get_json()
         df = dataset_id_to_df(posted_json['dataset_id'])
         x = df.get(posted_json['input_field'][0])
@@ -170,7 +176,9 @@ class Single(Resource):
 
             # If column name already exists, append unique ID
             predicted_column_name += (
-                str(uuid4()) if predicted_column_name in df.keys() else ''
+                str(uuid4())
+                if predicted_column_name in df.keys()
+                else ''
             )
             df[predicted_column_name] = class_col
 

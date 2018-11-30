@@ -63,6 +63,21 @@ class Single(Resource):
             as_attachment=True,
             attachment_filename='%s.data' % storage_id)
 
+    def put(self, storage_id):
+        # Update/Replace file
+        posted_data = request.get_data()
+
+        storage_row = (
+            Storage.query.filter_by(id=storage_id).first()
+        )
+        storage_row.binary = posted_data
+        db.session.commit()
+
+        storage_object = Storage.query.filter_by(id=storage_id).first()
+        return storage_object.id
+
+
+
     def delete(self, storage_id):
         # delete a model
         return {'never': 'gonna happen STORAGE single file {}'.format(storage_id)}, 200

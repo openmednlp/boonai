@@ -10,6 +10,7 @@ app.config.from_pyfile('application.cfg', silent=True)
 
 
 # Dropzone settings TODO: move this to a proper location
+
 app.config['DROPZONE_UPLOAD_MULTIPLE'] = True
 app.config['DROPZONE_ALLOWED_FILE_CUSTOM'] = True
 
@@ -31,17 +32,21 @@ app.config['DROPZONE_MAX_FILE_SIZE'] = 10
 
 db.init_app(app)
 db.app = app
-
 dropzone = Dropzone(app)
 
+
 # Setup Flask-User and specify the User dataset-model
+
 user_manager = UserManager(app, db, User)
 
 
 # Create all database tables
 db.create_all()
 
+
+# TODO: DEV Only
 # Create 'member@example.com' user with no roles
+
 if not User.query.filter(User.email == 'member@example.com').first():
     user = User(
         username='member',
@@ -66,11 +71,13 @@ if not User.query.filter(User.email == 'admin@example.com').first():
     db.session.commit()
 
 
+# API endpoints
+
 from boonai.project.api.datasets import data_blueprint
 from boonai.project.api.machine_learning.models import models_blueprint
 from boonai.project.api.machine_learning.algorithms import algorithms_blueprint
 
-from boonai.project.api.samples import al_blueprint
+from boonai.project.api.al import al_blueprint
 from boonai.project.api.storage import storage_blueprint
 from boonai.project.api.storage_adapter import storage_adapter_blueprint
 
@@ -81,11 +88,18 @@ app.register_blueprint(al_blueprint, url_prefix='/api')
 app.register_blueprint(storage_blueprint, url_prefix='/api')
 app.register_blueprint(storage_adapter_blueprint, url_prefix='/api')
 
+
+# Site end points
+
 from boonai.project.site.routes import mod as site_mod
 from boonai.project.site.datasets import mod as datasets_mod
 from boonai.project.site.machine_learning import mod as ml_mod
 from boonai.project.site.dataprep import mod as dataprep_mod
+from boonai.project.site.al import mod as al_mod
+
 app.register_blueprint(site_mod, url_prefix='/')
-app.register_blueprint(datasets_mod, url_prefix='/datasets')
 app.register_blueprint(ml_mod, url_prefix='/ml')
+
+app.register_blueprint(datasets_mod, url_prefix='/datasets')
 app.register_blueprint(dataprep_mod, url_prefix='/datasets')
+app.register_blueprint(al_mod, url_prefix='/datasets')

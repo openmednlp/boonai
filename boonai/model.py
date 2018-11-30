@@ -65,6 +65,8 @@ class Dataset(db.Model):
     train = db.Column(db.Boolean())
     test = db.Column(db.Boolean())
     label = db.Column(db.Boolean())
+    input = db.Column(db.String(64))
+    target = db.Column(db.String(64))
     project_id = db.Column(db.Integer())
     user_id = db.Column(db.Integer())
     file_id = db.Column(db.Integer())
@@ -122,6 +124,7 @@ class StorageAdapter(db.Model):
     __tablename__ = 'storage_adapter'
     id = db.Column(db.Integer, primary_key=True)
     uri = db.Column(db.String(1024))
+    # engine = db.Column(db.String(64)) # TODO: this is for the next change
 
 
 # class ModelStorageAdapter(db.Model):

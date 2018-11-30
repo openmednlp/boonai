@@ -23,6 +23,7 @@ from boonai.project.site.helper import (extract_section,
                                         get_html_pagination_params,
                                         hateoas_get_link)
 
+
 dropzone_files = UploadSet('files')  # allowed file types are defined in the config.
 
 mod = Blueprint('site_dataprep', __name__, template_folder='templates')
@@ -67,6 +68,8 @@ class SubmitProcessed(FlaskForm):
     label = BooleanField(
         'Label',
     )
+    input = SelectField('Input')
+    target = SelectField('Target')
 
 
 @mod.route('/dropzone', methods=['GET', 'POST'])
@@ -366,6 +369,15 @@ def filter_data():
 def upload_proc_get():
     form = SubmitProcessed()
     # TODO: make a section selection ((.|\n)*(\n)+Beurteilung) ((\n)+tel(.|\n)*)
+
+    file_path = join(session['outputs'], 'processed.csv')
+    df = pd.read_csv(file_path)
+    fields = df.columns
+    fields_tuples = [(f, f) for f in fields]
+
+    form.input.choices = fields_tuples
+    form.target.choices = fields_tuples
+
     return render_template(
         'datasets/upload.html',
         form=form,
@@ -373,7 +385,8 @@ def upload_proc_get():
     )
 
 
-def upload_dataset(file, name, description, train, test, label):
+def upload_dataset(
+        file, name, description, train, test, label, input, target):
     datasets_api_url = current_app.config['DATASETS_API']
     storage_adapter_api_url = current_app.config['STORAGE_ADAPTER_API']
     try:
@@ -395,6 +408,8 @@ def upload_dataset(file, name, description, train, test, label):
         'train': train,  # TODO: maybe it can just accept true false
         'test': test,
         'label': label,
+        'input': input,
+        'target': target,
         'storage_adapter_uri': hateoas_get_link(storage_adapter_json, 'self'),
         'binary_uri': hateoas_get_link(storage_adapter_json, 'binary'),
         'user_id': current_user.id,
@@ -430,7 +445,9 @@ def upload_proc_post():
             description=form.description.data,
             train= form.train.data,
             test=form.test.data,
-            label=form.label.data
+            label=form.label.data,
+            input=form.input.data,
+            target=form.target.data
         )
 
         if not is_uploaded:

@@ -1,13 +1,13 @@
 import io
 from io import StringIO
 
+import json
 import re
 
 import pandas as pd
 import requests
-from flask import current_app
+from flask import current_app, jsonify
 from flask_paginate import Pagination, get_page_parameter
-
 
 
 def upload_dataset(file, name, description, user_id, project_id):
@@ -31,6 +31,17 @@ def upload_dataset(file, name, description, user_id, project_id):
         json=dataset_json
     )
     return True
+
+
+from os.path import splitext
+
+
+def get_file_type(filename):
+    ext = splitext(filename)[1]
+    if ext == '.csv':
+        return 'csv'
+    if ext in ['.xls', '.xlsx']:
+        return 'excel'
 
 
 def extract_section(header_patterns, string, strip=True, empty_value=''):
@@ -119,12 +130,19 @@ def url_csv_to_df(url):
     )
 
 
-def url_dataset_to_df(dataset_id):
+def get_dataset_response(dataset_id):
+    datasets_api = current_app.config['DATASETS_API']
+    dataset_uri = url_join(datasets_api, dataset_id)
+    return requests.get(dataset_uri)
+
+
+def dataset_id_to_df(dataset_id):
     datasets_api = current_app.config['DATASETS_API']
     dataset_uri = url_join(datasets_api, dataset_id)
     r_dataset = requests.get(dataset_uri)
     dataset_links = r_dataset.json()['links']
 
+    # TODO: helper function for this exists
     storage_uri = [
         l['href']
         for l in dataset_links
@@ -134,7 +152,7 @@ def url_dataset_to_df(dataset_id):
     r_storage = requests.get(storage_uri)
     dataset = r_storage.content.decode('utf-8')
     csv = StringIO(dataset)
-    df = pd.read_csv(csv)
+    return pd.read_csv(csv)
 
 
 def hateoas_get_link(single_json, lookup_str, links='links', rel='rel', href='href'):
@@ -143,3 +161,21 @@ def hateoas_get_link(single_json, lookup_str, links='links', rel='rel', href='hr
         if l[rel] == lookup_str:
             return l[href]
     raise ValueError('No file relation found in the links list')
+
+
+def get_available_fields(dataset_id):
+    dataset_api_url = current_app.config['DATASETS_API']
+    dataset_url = url_join(dataset_api_url, dataset_id)
+    r = requests.get(dataset_url)
+    content = json.loads(r.content)
+    links = content['links']
+
+    file_url = None
+    for l in links:
+        if l['rel'] == 'binary':
+            file_url = l['href']
+            break
+
+    df = url_csv_to_df(file_url)
+
+    return jsonify({c: c for c in df.columns})

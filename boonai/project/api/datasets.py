@@ -59,6 +59,8 @@ class All(Resource):
             train=posted_json['train'],
             test=posted_json['test'],
             label=posted_json['label'],
+            input=posted_json['input'],
+            target=posted_json['target'],
             project_id=posted_json['project_id'],
             storage_adapter_uri=posted_json['storage_adapter_uri'],
             binary_uri=posted_json['binary_uri']

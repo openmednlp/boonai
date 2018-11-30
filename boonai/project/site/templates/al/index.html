@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block title %} :: Datasets :: Active Learning{% endblock %}
+
+{% block body %}
+{% from "partials/macros.html" import build_file_submit with context %}
+{% from "partials/macros.html" import build_form with context %}
+{% from "partials/macros.html" import build_list with context %}
+
+<br/>
+<a href="{{ url_for('site_datasets.root') }}">back</a>
+<br/><br/>
+
+<img src="{{ url_for('static', filename='data_improve.jpg') }}">
+
+<h1>Active Learning</h1>
+<h2>Generate</h2>
+Generate the next batch for labeling*
+<form action="{{ url }}" method="POST" enctype="multipart/form-data">
+<dl>
+    {{ form_generate.csv_download() }}
+    {{ form_generate.xls_download() }}
+
+    {{ form_generate.csrf_token }}
+</dl>
+</form>
+*(size of batch and the selection algorithm are fixed for now)
+
+<h2>Update</h2>
+{{ build_form(form_update, url) }}
+
+{% endblock %}

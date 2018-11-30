@@ -58,6 +58,8 @@ class Submit(FlaskForm):
 @mod.route('/list/<int:dataset_id>')
 @login_required
 def dataset_get(dataset_id):
+    # TODO: A lot of it should be replaced -> df = h.dataset_id_to_df(dataset_id)
+
     dataset_single_uri = h.url_join(
         current_app.config['DATASETS_API'],
         dataset_id
@@ -76,7 +78,7 @@ def dataset_get(dataset_id):
 
     storage_binary_uri = h.hateoas_get_link(json_data, 'binary')
 
-    label_url = h.hateoas_get_link(json_data, 'label')
+    label_url = h.url_join(request.url, 'al') #h.hateoas_get_link(json_data, 'label')
 
     # TODO get storage delte uri from dataset
     delete_url = url_for(
